@@ -1,0 +1,682 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 50;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8047693B265AAA1F0019F414 /* macos_btrfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 8047693A265AAA1F0019F414 /* macos_btrfs.c */; };
+		805F6B5A265C0DD300531605 /* btrfs.util.c in Sources */ = {isa = PBXBuildFile; fileRef = 809083A4265BC8910086C020 /* btrfs.util.c */; };
+		805F6B64265C104A00531605 /* btrfs_layout.h in Headers */ = {isa = PBXBuildFile; fileRef = 805F6B63265C104A00531605 /* btrfs_layout.h */; };
+		805F6B66265C10DD00531605 /* btrfs_types.h in Headers */ = {isa = PBXBuildFile; fileRef = 805F6B65265C10DD00531605 /* btrfs_types.h */; };
+		805F6B69265C3ED200531605 /* btrfs_endian.h in Headers */ = {isa = PBXBuildFile; fileRef = 805F6B68265C3ED200531605 /* btrfs_endian.h */; };
+		80AF808A265D58C000F7A600 /* Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 80AF8080265D207F00F7A600 /* Info.plist */; };
+		80AF808C265D5CEA00F7A600 /* btrfs.util in Resources */ = {isa = PBXBuildFile; fileRef = 805F6B53265C0DC900531605 /* btrfs.util */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		805F6B61265C0ED600531605 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8047692E265AAA1F0019F414 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 805F6B52265C0DC900531605;
+			remoteInfo = btrfs.util;
+		};
+		80AF8084265D208C00F7A600 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8047692E265AAA1F0019F414 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 805F6B52265C0DC900531605;
+			remoteInfo = btrfs.util;
+		};
+		80AF8086265D208C00F7A600 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8047692E265AAA1F0019F414 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 80476936265AAA1F0019F414;
+			remoteInfo = "macos-btrfs";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		805F6B51265C0DC900531605 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		80476937265AAA1F0019F414 /* macos-btrfs.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "macos-btrfs.kext"; sourceTree = BUILT_PRODUCTS_DIR; };
+		8047693A265AAA1F0019F414 /* macos_btrfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = macos_btrfs.c; sourceTree = "<group>"; };
+		8047693C265AAA1F0019F414 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		805F6B48265BF50900531605 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/CoreFoundation.framework; sourceTree = DEVELOPER_DIR; };
+		805F6B53265C0DC900531605 /* btrfs.util */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = btrfs.util; sourceTree = BUILT_PRODUCTS_DIR; };
+		805F6B63265C104A00531605 /* btrfs_layout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs_layout.h; sourceTree = "<group>"; };
+		805F6B65265C10DD00531605 /* btrfs_types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs_types.h; sourceTree = "<group>"; };
+		805F6B68265C3ED200531605 /* btrfs_endian.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs_endian.h; sourceTree = "<group>"; };
+		80735C0F265E4E8F00C3CD1B /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		80735C25265E510500C3CD1B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		809083A4265BC8910086C020 /* btrfs.util.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = btrfs.util.c; path = btrfs.util/btrfs.util.c; sourceTree = SOURCE_ROOT; };
+		80AF807E265D207F00F7A600 /* btrfs.fs */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = btrfs.fs; sourceTree = BUILT_PRODUCTS_DIR; };
+		80AF8080265D207F00F7A600 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		80476934265AAA1F0019F414 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		805F6B50265C0DC900531605 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80AF807B265D207F00F7A600 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		8047692D265AAA1F0019F414 = {
+			isa = PBXGroup;
+			children = (
+				80735C25265E510500C3CD1B /* README.md */,
+				80735C0F265E4E8F00C3CD1B /* LICENSE */,
+				805F6B67265C3E9500531605 /* btrfs_filesystem */,
+				80476939265AAA1F0019F414 /* macos-btrfs */,
+				805F6B54265C0DC900531605 /* btrfs.util */,
+				80AF807F265D207F00F7A600 /* btrfs_fs */,
+				80476938265AAA1F0019F414 /* Products */,
+				805F6B47265BF50800531605 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+			usesTabs = 1;
+		};
+		80476938265AAA1F0019F414 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				80476937265AAA1F0019F414 /* macos-btrfs.kext */,
+				805F6B53265C0DC900531605 /* btrfs.util */,
+				80AF807E265D207F00F7A600 /* btrfs.fs */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		80476939265AAA1F0019F414 /* macos-btrfs */ = {
+			isa = PBXGroup;
+			children = (
+				8047693A265AAA1F0019F414 /* macos_btrfs.c */,
+				8047693C265AAA1F0019F414 /* Info.plist */,
+			);
+			path = "macos-btrfs";
+			sourceTree = "<group>";
+		};
+		805F6B47265BF50800531605 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				805F6B48265BF50900531605 /* CoreFoundation.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		805F6B54265C0DC900531605 /* btrfs.util */ = {
+			isa = PBXGroup;
+			children = (
+				809083A4265BC8910086C020 /* btrfs.util.c */,
+			);
+			path = btrfs.util;
+			sourceTree = "<group>";
+		};
+		805F6B67265C3E9500531605 /* btrfs_filesystem */ = {
+			isa = PBXGroup;
+			children = (
+				805F6B63265C104A00531605 /* btrfs_layout.h */,
+				805F6B65265C10DD00531605 /* btrfs_types.h */,
+				805F6B68265C3ED200531605 /* btrfs_endian.h */,
+			);
+			path = btrfs_filesystem;
+			sourceTree = "<group>";
+		};
+		80AF807F265D207F00F7A600 /* btrfs_fs */ = {
+			isa = PBXGroup;
+			children = (
+				80AF8080265D207F00F7A600 /* Info.plist */,
+			);
+			path = btrfs_fs;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		80476932265AAA1F0019F414 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				805F6B69265C3ED200531605 /* btrfs_endian.h in Headers */,
+				805F6B66265C10DD00531605 /* btrfs_types.h in Headers */,
+				805F6B64265C104A00531605 /* btrfs_layout.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		80476936265AAA1F0019F414 /* macos-btrfs */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8047693F265AAA1F0019F414 /* Build configuration list for PBXNativeTarget "macos-btrfs" */;
+			buildPhases = (
+				80476932265AAA1F0019F414 /* Headers */,
+				80476933265AAA1F0019F414 /* Sources */,
+				80476934265AAA1F0019F414 /* Frameworks */,
+				80476935265AAA1F0019F414 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				805F6B62265C0ED600531605 /* PBXTargetDependency */,
+			);
+			name = "macos-btrfs";
+			productName = "macos-btrfs";
+			productReference = 80476937265AAA1F0019F414 /* macos-btrfs.kext */;
+			productType = "com.apple.product-type.kernel-extension";
+		};
+		805F6B52265C0DC900531605 /* btrfs.util */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 805F6B57265C0DC900531605 /* Build configuration list for PBXNativeTarget "btrfs.util" */;
+			buildPhases = (
+				805F6B4F265C0DC900531605 /* Sources */,
+				805F6B50265C0DC900531605 /* Frameworks */,
+				805F6B51265C0DC900531605 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = btrfs.util;
+			productName = btrfs.util;
+			productReference = 805F6B53265C0DC900531605 /* btrfs.util */;
+			productType = "com.apple.product-type.tool";
+		};
+		80AF807D265D207F00F7A600 /* btrfs.fs */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 80AF8081265D207F00F7A600 /* Build configuration list for PBXNativeTarget "btrfs.fs" */;
+			buildPhases = (
+				80AF807A265D207F00F7A600 /* Sources */,
+				80AF807B265D207F00F7A600 /* Frameworks */,
+				80AF807C265D207F00F7A600 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				80AF8085265D208C00F7A600 /* PBXTargetDependency */,
+				80AF8087265D208C00F7A600 /* PBXTargetDependency */,
+			);
+			name = btrfs.fs;
+			productName = btrfs;
+			productReference = 80AF807E265D207F00F7A600 /* btrfs.fs */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		8047692E265AAA1F0019F414 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 1250;
+				TargetAttributes = {
+					80476936265AAA1F0019F414 = {
+						CreatedOnToolsVersion = 12.5;
+					};
+					805F6B52265C0DC900531605 = {
+						CreatedOnToolsVersion = 12.5;
+					};
+					80AF807D265D207F00F7A600 = {
+						CreatedOnToolsVersion = 12.5;
+					};
+				};
+			};
+			buildConfigurationList = 80476931265AAA1F0019F414 /* Build configuration list for PBXProject "macos-btrfs" */;
+			compatibilityVersion = "Xcode 9.3";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 8047692D265AAA1F0019F414;
+			productRefGroup = 80476938265AAA1F0019F414 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				80476936265AAA1F0019F414 /* macos-btrfs */,
+				805F6B52265C0DC900531605 /* btrfs.util */,
+				80AF807D265D207F00F7A600 /* btrfs.fs */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		80476935265AAA1F0019F414 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80AF808A265D58C000F7A600 /* Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80AF807C265D207F00F7A600 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				80AF808C265D5CEA00F7A600 /* btrfs.util in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		80476933265AAA1F0019F414 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8047693B265AAA1F0019F414 /* macos_btrfs.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		805F6B4F265C0DC900531605 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				805F6B5A265C0DD300531605 /* btrfs.util.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80AF807A265D207F00F7A600 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		805F6B62265C0ED600531605 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 805F6B52265C0DC900531605 /* btrfs.util */;
+			targetProxy = 805F6B61265C0ED600531605 /* PBXContainerItemProxy */;
+		};
+		80AF8085265D208C00F7A600 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 805F6B52265C0DC900531605 /* btrfs.util */;
+			targetProxy = 80AF8084265D208C00F7A600 /* PBXContainerItemProxy */;
+		};
+		80AF8087265D208C00F7A600 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 80476936265AAA1F0019F414 /* macos-btrfs */;
+			targetProxy = 80AF8086265D208C00F7A600 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		8047693D265AAA1F0019F414 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 0.1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx10.14;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Debug;
+		};
+		8047693E265AAA1F0019F414 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 0.1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx10.14;
+				VERSIONING_SYSTEM = "apple-generic";
+			};
+			name = Release;
+		};
+		80476940265AAA1F0019F414 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "compiler-default";
+				CLANG_CXX_LIBRARY = "compiler-default";
+				CLANG_ENABLE_MODULES = NO;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 5657UV779W;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_BUILTIN_FUNCTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_FAST_MATH = NO;
+				GCC_INPUT_FILETYPE = automatic;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = "PRODUCT_BUNDLE_IDENTIFIER=\"$(PRODUCT_BUNDLE_IDENTIFIER)\"";
+				GCC_USE_STANDARD_INCLUDE_SEARCHING = YES;
+				INFOPLIST_FILE = "macos-btrfs/Info.plist";
+				INFOPLIST_PREPROCESS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 0.1;
+				MODULE_NAME = com.relalis.macos_btrfs;
+				MODULE_START = macos_btrfs_start;
+				MODULE_STOP = macos_btrfs_stop;
+				MODULE_VERSION = 1.0.0d1;
+				OTHER_CFLAGS = "-Wno-error=implicit-function-declaration";
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.relalis.macos-btrfs";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_CLANG_STATIC_ANALYZER = YES;
+				SDKROOT = macosx10.14;
+				SUPPORTED_PLATFORMS = macosx;
+				WRAPPER_EXTENSION = kext;
+			};
+			name = Debug;
+		};
+		80476941265AAA1F0019F414 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "compiler-default";
+				CLANG_CXX_LIBRARY = "compiler-default";
+				CLANG_ENABLE_MODULES = NO;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_ENABLE_BUILTIN_FUNCTIONS = YES;
+				GCC_ENABLE_CPP_RTTI = YES;
+				GCC_FAST_MATH = NO;
+				GCC_INPUT_FILETYPE = automatic;
+				GCC_NO_COMMON_BLOCKS = NO;
+				GCC_PREPROCESSOR_DEFINITIONS = "PRODUCT_BUNDLE_IDENTIFIER=\"$(PRODUCT_BUNDLE_IDENTIFIER)\"";
+				GCC_USE_STANDARD_INCLUDE_SEARCHING = YES;
+				INFOPLIST_FILE = "macos-btrfs/Info.plist";
+				INFOPLIST_PREPROCESS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 0.1;
+				MODULE_NAME = com.relalis.macos_btrfs;
+				MODULE_START = macos_btrfs_start;
+				MODULE_STOP = macos_btrfs_stop;
+				MODULE_VERSION = 1.0.0d1;
+				OTHER_CFLAGS = "-Wno-error=implicit-function-declaration";
+				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.relalis.macos-btrfs";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				RUN_CLANG_STATIC_ANALYZER = YES;
+				SDKROOT = macosx10.14;
+				SUPPORTED_PLATFORMS = macosx;
+				WRAPPER_EXTENSION = kext;
+			};
+			name = Release;
+		};
+		805F6B58265C0DC900531605 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_HARDENED_RUNTIME = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.14;
+			};
+			name = Debug;
+		};
+		805F6B59265C0DC900531605 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_HARDENED_RUNTIME = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx10.14;
+			};
+			name = Release;
+		};
+		80AF8082265D207F00F7A600 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES;
+				CLANG_ENABLE_MODULES = NO;
+				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_NS_ASSERTIONS = YES;
+				FS_BUNDLE_BIN_DIR = Contents/Resources;
+				FS_BUNDLE_BIN_PATH = $FS_BUNDLE_PATH/$FS_BUNDLE_BIN_DIR;
+				FS_BUNDLE_PATH = /System/Library/Filesystems/ntfs.fs;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_FOUR_CHARACTER_CONSTANTS = YES;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = YES;
+				INFOPLIST_FILE = btrfs_fs/Info.plist;
+				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Filesystems";
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				OTHER_LDFLAGS = "-bundle";
+				PRODUCT_BUNDLE_IDENTIFIER = com.relalis.btrfs;
+				PRODUCT_NAME = btrfs;
+				SKIP_INSTALL = NO;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+				);
+				WRAPPER_EXTENSION = fs;
+				ZERO_LINK = "";
+			};
+			name = Debug;
+		};
+		80AF8083265D207F00F7A600 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES;
+				CLANG_ENABLE_MODULES = NO;
+				CLANG_ENABLE_OBJC_ARC = NO;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = NO;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = NO;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = NO;
+				COPY_PHASE_STRIP = YES;
+				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_NS_ASSERTIONS = YES;
+				FS_BUNDLE_BIN_DIR = Contents/Resources;
+				FS_BUNDLE_BIN_PATH = $FS_BUNDLE_PATH/$FS_BUNDLE_BIN_DIR;
+				FS_BUNDLE_PATH = /System/Library/Filesystems/ntfs.fs;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_FOUR_CHARACTER_CONSTANTS = YES;
+				GCC_WARN_INITIALIZER_NOT_FULLY_BRACKETED = YES;
+				GCC_WARN_SHADOW = YES;
+				GCC_WARN_SIGN_COMPARE = YES;
+				INFOPLIST_FILE = btrfs_fs/Info.plist;
+				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Filesystems";
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				OTHER_LDFLAGS = "-bundle";
+				PRODUCT_BUNDLE_IDENTIFIER = com.relalis.btrfs;
+				PRODUCT_NAME = btrfs;
+				SKIP_INSTALL = NO;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+				);
+				WRAPPER_EXTENSION = fs;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		80476931265AAA1F0019F414 /* Build configuration list for PBXProject "macos-btrfs" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8047693D265AAA1F0019F414 /* Debug */,
+				8047693E265AAA1F0019F414 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8047693F265AAA1F0019F414 /* Build configuration list for PBXNativeTarget "macos-btrfs" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80476940265AAA1F0019F414 /* Debug */,
+				80476941265AAA1F0019F414 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		805F6B57265C0DC900531605 /* Build configuration list for PBXNativeTarget "btrfs.util" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				805F6B58265C0DC900531605 /* Debug */,
+				805F6B59265C0DC900531605 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		80AF8081265D207F00F7A600 /* Build configuration list for PBXNativeTarget "btrfs.fs" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80AF8082265D207F00F7A600 /* Debug */,
+				80AF8083265D207F00F7A600 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 8047692E265AAA1F0019F414 /* Project object */;
+}
