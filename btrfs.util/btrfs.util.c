@@ -13,6 +13,7 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 
 #include <errno.h>
 #include <stdio.h>
@@ -21,8 +22,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "btrfs_layout.h"
-#include "btrfs_endian.h"
+#include "btrfs.h"
+#include "crc32c.h"
 
 #ifndef FSUC_GETUUID
 #define FSUC_GETUUID 'k'
@@ -54,9 +55,9 @@ static void usage(const char *progname)
     exit(FSUR_INVAL);
 }
 
-static int get_volume_superblock_record(char *rdev, BTRFS_SUPERBLOCK *sbrec) {
-	
-	BTRFS_SUPERBLOCK *sb;
+static int get_volume_superblock_record(char *rdev, superblock *sbrec) {
+
+	superblock *sb;
 	int f, opresult = FSUR_UNRECOGNIZED;
 	void *buf;
 
@@ -69,10 +70,13 @@ static int get_volume_superblock_record(char *rdev, BTRFS_SUPERBLOCK *sbrec) {
 		// Read superblock record and check that the magic works
 		if(pread(f, buf, BTRFS_SUPERBLOCK_SIZE, 0x10000) != BTRFS_SUPERBLOCK_SIZE) {opresult = FSUR_IO_FAIL;}
 		else {
-			sb = (BTRFS_SUPERBLOCK *)buf;
-			if(!bcmp(sb->sb_magic, BTRFS_MAGIC, 0x8)) {
-				memcpy(sbrec, sb, sizeof(*sb));
-				opresult = FSUR_RECOGNIZED;
+			sb = (superblock *)buf;
+			if(sb->magic == BTRFS_MAGIC) {
+				uint32_t crc32 = ~calc_crc32c(0xffffffff, (uint8_t*)&sb->uuid, (unsigned long)sizeof(superblock) - sizeof(sb->checksum));
+				if (crc32 == *((uint32_t*)sb->checksum)) {
+					memcpy(sbrec, sb, sizeof(*sb));
+					opresult = FSUR_RECOGNIZED;
+				}
 			}
 			else {opresult = FSUR_UNRECOGNIZED;}
 		}
@@ -98,7 +102,7 @@ static int get_volume_superblock_record(char *rdev, BTRFS_SUPERBLOCK *sbrec) {
  */
 
 static int do_getuuid(char *rdev) {
-	BTRFS_SUPERBLOCK *sb;
+	superblock *sb;
 	int err = FSUR_INVAL;
 
 	sb = malloc(BTRFS_SUPERBLOCK_SIZE);
@@ -107,14 +111,12 @@ static int do_getuuid(char *rdev) {
 		if(err == FSUR_RECOGNIZED) {
 			char uuid[37];
 
-			// todo: clean this up
-			// right: 9d5bce63-3a73-4fb3-b8bd-9d00a6d9c30a
-			// wrong: 63ce5b9d-733a-b34f-b8bd-9d00a6d9c30a
+			/// @todo: clean this up
 			if(snprintf(uuid, 37, "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-					 sb->fsid[0], sb->fsid[1], sb->fsid[2], sb->fsid[3],
-					 sb->fsid[4], sb->fsid[5], sb->fsid[6], sb->fsid[7],
-					 sb->fsid[8], sb->fsid[9],  sb->fsid[10], sb->fsid[11],
-					 sb->fsid[12], sb->fsid[13], sb->fsid[14], sb->fsid[15]) != 36)
+					 sb->uuid.uuid[0], sb->uuid.uuid[1], sb->uuid.uuid[2], sb->uuid.uuid[3],
+					 sb->uuid.uuid[4], sb->uuid.uuid[5], sb->uuid.uuid[6], sb->uuid.uuid[7],
+					 sb->uuid.uuid[8], sb->uuid.uuid[9],  sb->uuid.uuid[10], sb->uuid.uuid[11],
+					 sb->uuid.uuid[12], sb->uuid.uuid[13], sb->uuid.uuid[14], sb->uuid.uuid[15]) != 36)
 				err = FSUR_IO_FAIL;
 			else {
 				(void)write(STDOUT_FILENO, uuid, 36);
@@ -131,7 +133,7 @@ static int do_getuuid(char *rdev) {
 /**
  * do_probe - Examine a volume to see if we recognize it as an NTFS volume.
  *
- * If the volume is recognized as an NTFS volume look up its volume label and
+ * If the volume is recognized as an dfghsa volume look up its volume label and
  * output it to stdout then return FSUR_RECOGNIZED.
  *
  * If the volume is not an NTFS volume return FSUR_UNRECOGNIZED.
@@ -143,7 +145,7 @@ static int do_probe(char *rdev, const bool removable __attribute__((unused)),
 {
 //	UUID="9d5bce63-3a73-4fb3-b8bd-9d00a6d9c30a" UUID_SUB="9cb965da-c2df-44ca-9917-47b96cc786a2" TYPE="btrfs" PARTUUID="ff67145c-01"
 	int err = FSUR_IO_FAIL;
-	BTRFS_SUPERBLOCK *sb;
+	superblock *sb;
 	
 	sb = malloc(BTRFS_SUPERBLOCK_SIZE);
 	if(sb) {
@@ -156,6 +158,91 @@ static int do_probe(char *rdev, const bool removable __attribute__((unused)),
 	return err;
 }
 
+/**
+ * do_exec - Execute an external command.
+ */
+static int do_exec(const char *progname, char *const args[])
+{
+	pid_t pid;
+	union wait status;
+	int err;
+
+	pid = fork();
+	if (pid == -1) {
+		fprintf(stderr, "%s: fork failed: %s\n", progname,
+				strerror(errno));
+		return FSUR_INVAL;
+	}
+	if (!pid) {
+		/* In child process, execute external command. */
+		(void)execv(args[0], args);
+		/* We only get here if the execv() failed. */
+		err = errno;
+		fprintf(stderr, "%s: execv %s failed: %s\n", progname, args[0],
+				strerror(err));
+		exit(err);
+	}
+	/* In parent process, wait for exernal command to finish. */
+	if (wait4(pid, (int*)&status, 0, NULL) != pid) {
+		fprintf(stderr, "%s: BUG executing %s command.\n", progname,
+				args[0]);
+		return FSUR_INVAL;
+	}
+	if (!WIFEXITED(status)) {
+		fprintf(stderr, "%s: %s command aborted by signal %d.\n",
+				progname, args[0], WTERMSIG(status));
+		return FSUR_INVAL;
+	}
+	err = WEXITSTATUS(status);
+	if (err) {
+		fprintf(stderr, "%s: %s command failed: %s\n", progname,
+				args[0], strerror(err));
+		return FSUR_IO_FAIL;
+	}
+	return FSUR_IO_SUCCESS;
+}
+
+/**
+ * do_mount - Mount a file system.
+ */
+static int do_mount(const char *progname, char *dev, char *mp,
+		const bool removable __attribute__((unused)),
+		const bool readonly, const bool nosuid, const bool nodev)
+{
+	char *const kextargs[] = { "/sbin/kextload",
+			"/System/Library/Extensions/btrfs.kext", NULL };
+	char *mountargs[] = { "/sbin/mount", "-w", "-o",
+			"suid", "-o", "dev", "-t", "btrfs", dev, mp, NULL };
+	struct vfsconf vfc;
+
+	if (!mp || !strlen(mp))
+		return FSUR_INVAL;
+	if (readonly)
+		mountargs[1] = "-r";
+	if (nosuid)
+		mountargs[3] = "nosuid";
+	if (nodev)
+		mountargs[5] = "nodev";
+	/*
+	 * If the kext is not loaded, load it now.  Ignore any errors as the
+	 * mount will fail appropriately if the kext is not loaded.
+	 */
+	if (getvfsbyname("btrfs", &vfc))
+		(void)do_exec(progname, kextargs);
+	return do_exec(progname, mountargs);
+}
+
+/**
+ * do_unmount - Unmount a volume.
+ */
+static int do_unmount(const char *progname, char *mp)
+{
+	char *const umountargs[] = { "/sbin/umount", mp, NULL };
+
+	if (!mp || !strlen(mp))
+		return FSUR_INVAL;
+	return do_exec(progname, umountargs);
+}
 
 int main(int argc, char **argv) {
     char *progname, *dev, *mp = NULL;
@@ -268,14 +355,13 @@ int main(int argc, char **argv) {
 		err = do_probe(rawdev, removable, readonly);
 		break;
 	case FSUC_MOUNT:
-//		err = do_mount(progname, blockdev, mp, removable, readonly,
-//				nosuid, nodev);
-//		break;
+		err = do_mount(progname, blockdev, mp, removable, readonly,
+				nosuid, nodev);
+		break;
 	case FSUC_UNMOUNT:
-//		err = do_unmount(progname, mp);
+		err = do_unmount(progname, mp);
 		break;
 	default:
-		/* Cannot happen... */
 		usage(progname);
 		break;
 	}

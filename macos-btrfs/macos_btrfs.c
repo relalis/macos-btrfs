@@ -9,6 +9,8 @@
 #include <libkern/libkern.h>
 #include <libkern/locks.h>
 
+#include "btrfs.h"
+
 
 
 kern_return_t macos_btrfs_kext_start(kmod_info_t * ki, void *d);
