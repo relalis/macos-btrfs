@@ -7,10 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		802F91C928209F6A002C3B7A /* btrfs_volume.h in Headers */ = {isa = PBXBuildFile; fileRef = 802F91C828209F6A002C3B7A /* btrfs_volume.h */; };
+		802F91CB2820D469002C3B7A /* btrfs_vfsops.c in Sources */ = {isa = PBXBuildFile; fileRef = 802F91CA2820D469002C3B7A /* btrfs_vfsops.c */; };
+		802F91CC2820D469002C3B7A /* btrfs_vfsops.c in Sources */ = {isa = PBXBuildFile; fileRef = 802F91CA2820D469002C3B7A /* btrfs_vfsops.c */; };
 		8047693B265AAA1F0019F414 /* macos_btrfs.c in Sources */ = {isa = PBXBuildFile; fileRef = 8047693A265AAA1F0019F414 /* macos_btrfs.c */; };
 		805876F2269B8898000C37BB /* libutil.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 805876F1269B8898000C37BB /* libutil.tbd */; };
 		805F6B5A265C0DD300531605 /* btrfs.util.c in Sources */ = {isa = PBXBuildFile; fileRef = 809083A4265BC8910086C020 /* btrfs.util.c */; };
-		809F68DB2660FA3700F29922 /* btrfs.h in Headers */ = {isa = PBXBuildFile; fileRef = 809F68DA2660FA3700F29922 /* btrfs.h */; };
+		80770AEC278A3FA800DBC29C /* btrfs.h in Sources */ = {isa = PBXBuildFile; fileRef = 80770AEB278A3FA800DBC29C /* btrfs.h */; };
+		809F68DB2660FA3700F29922 /* btrfs_filesystem.h in Headers */ = {isa = PBXBuildFile; fileRef = 809F68DA2660FA3700F29922 /* btrfs_filesystem.h */; };
 		80AEB7E02692CF5700C93F47 /* crc32c.h in Headers */ = {isa = PBXBuildFile; fileRef = 80AEB7DE2692CF5700C93F47 /* crc32c.h */; };
 		80AEB7E12692CF5700C93F47 /* crc32c.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AEB7DF2692CF5700C93F47 /* crc32c.c */; };
 		80AEB7E22692CF5700C93F47 /* crc32c.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AEB7DF2692CF5700C93F47 /* crc32c.c */; };
@@ -72,6 +76,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		802F91C828209F6A002C3B7A /* btrfs_volume.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs_volume.h; sourceTree = "<group>"; };
+		802F91CA2820D469002C3B7A /* btrfs_vfsops.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = btrfs_vfsops.c; sourceTree = "<group>"; };
 		80476937265AAA1F0019F414 /* macos-btrfs.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "macos-btrfs.kext"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8047693A265AAA1F0019F414 /* macos_btrfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = macos_btrfs.c; sourceTree = "<group>"; };
 		8047693C265AAA1F0019F414 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -81,8 +87,9 @@
 		805F6B53265C0DC900531605 /* btrfs.util */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = btrfs.util; sourceTree = BUILT_PRODUCTS_DIR; };
 		80735C0F265E4E8F00C3CD1B /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		80735C25265E510500C3CD1B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		80770AEB278A3FA800DBC29C /* btrfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs.h; sourceTree = "<group>"; };
 		809083A4265BC8910086C020 /* btrfs.util.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = btrfs.util.c; path = btrfs.util/btrfs.util.c; sourceTree = SOURCE_ROOT; };
-		809F68DA2660FA3700F29922 /* btrfs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs.h; sourceTree = "<group>"; };
+		809F68DA2660FA3700F29922 /* btrfs_filesystem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = btrfs_filesystem.h; sourceTree = "<group>"; };
 		80AEB7DE2692CF5700C93F47 /* crc32c.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = crc32c.h; sourceTree = "<group>"; };
 		80AEB7DF2692CF5700C93F47 /* crc32c.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = crc32c.c; sourceTree = "<group>"; };
 		80AEB7E42693619A00C93F47 /* mount_btrfs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mount_btrfs.c; sourceTree = "<group>"; };
@@ -180,9 +187,12 @@
 		805F6B67265C3E9500531605 /* btrfs_filesystem */ = {
 			isa = PBXGroup;
 			children = (
-				809F68DA2660FA3700F29922 /* btrfs.h */,
+				809F68DA2660FA3700F29922 /* btrfs_filesystem.h */,
 				80AEB7DE2692CF5700C93F47 /* crc32c.h */,
 				80AEB7DF2692CF5700C93F47 /* crc32c.c */,
+				80770AEB278A3FA800DBC29C /* btrfs.h */,
+				802F91C828209F6A002C3B7A /* btrfs_volume.h */,
+				802F91CA2820D469002C3B7A /* btrfs_vfsops.c */,
 			);
 			path = btrfs_filesystem;
 			sourceTree = "<group>";
@@ -212,7 +222,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				80AEB7E02692CF5700C93F47 /* crc32c.h in Headers */,
-				809F68DB2660FA3700F29922 /* btrfs.h in Headers */,
+				802F91C928209F6A002C3B7A /* btrfs_volume.h in Headers */,
+				809F68DB2660FA3700F29922 /* btrfs_filesystem.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -298,7 +309,7 @@
 		8047692E265AAA1F0019F414 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1250;
+				LastUpgradeCheck = 1320;
 				TargetAttributes = {
 					80476936265AAA1F0019F414 = {
 						CreatedOnToolsVersion = 12.5;
@@ -359,6 +370,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				802F91CB2820D469002C3B7A /* btrfs_vfsops.c in Sources */,
+				80770AEC278A3FA800DBC29C /* btrfs.h in Sources */,
 				8047693B265AAA1F0019F414 /* macos_btrfs.c in Sources */,
 				80AEB7E12692CF5700C93F47 /* crc32c.c in Sources */,
 			);
@@ -385,6 +398,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				802F91CC2820D469002C3B7A /* btrfs_vfsops.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,6 +467,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				FRAMEWORK_SEARCH_PATHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -472,6 +487,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				SYSTEM_HEADER_SEARCH_PATHS = "";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Debug;
@@ -515,6 +531,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				FRAMEWORK_SEARCH_PATHS = "";
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -528,6 +545,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
+				SYSTEM_HEADER_SEARCH_PATHS = "";
 				VERSIONING_SYSTEM = "apple-generic";
 			};
 			name = Release;
@@ -543,6 +561,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_ENABLE_BUILTIN_FUNCTIONS = YES;
 				GCC_ENABLE_CPP_RTTI = YES;
@@ -564,7 +583,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.relalis.macos-btrfs";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = YES;
-				SDKROOT = macosx10.14;
+				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
 				WRAPPER_EXTENSION = kext;
 			};
@@ -581,6 +600,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5657UV779W;
+				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_ENABLE_BUILTIN_FUNCTIONS = YES;
@@ -603,7 +623,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "com.relalis.macos-btrfs";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				RUN_CLANG_STATIC_ANALYZER = YES;
-				SDKROOT = macosx10.14;
+				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
 				WRAPPER_EXTENSION = kext;
 			};
@@ -612,24 +632,26 @@
 		805F6B58265C0DC900531605 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5657UV779W;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx10.14;
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
 		805F6B59265C0DC900531605 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5657UV779W;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.14;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = macosx10.14;
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
@@ -639,6 +661,7 @@
 				ADDITIONAL_SDKS = "";
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				CLANG_CXX_LIBRARY = "compiler-default";
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5657UV779W;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -660,6 +683,7 @@
 				ADDITIONAL_SDKS = "";
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				CLANG_CXX_LIBRARY = "compiler-default";
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 5657UV779W;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -678,6 +702,7 @@
 		80AF8082265D207F00F7A600 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ADDITIONAL_SDKS = "";
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES;
 				CLANG_ENABLE_MODULES = NO;
@@ -689,6 +714,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 5657UV779W;
 				ENABLE_NS_ASSERTIONS = YES;
+				FRAMEWORK_SEARCH_PATHS = "";
 				FS_BUNDLE_BIN_DIR = Contents/Resources;
 				FS_BUNDLE_BIN_PATH = $FS_BUNDLE_PATH/$FS_BUNDLE_BIN_DIR;
 				FS_BUNDLE_PATH = /System/Library/Filesystems/ntfs.fs;
@@ -708,6 +734,8 @@
 				PRODUCT_NAME = btrfs;
 				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
+				SYSTEM_HEADER_SEARCH_PATHS = "$(SDK_DIR)/System/Library/Frameworks/Kernel.framework/Headers";
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",
@@ -721,6 +749,7 @@
 		80AF8083265D207F00F7A600 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ADDITIONAL_SDKS = "";
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES;
 				CLANG_ENABLE_MODULES = NO;
@@ -732,6 +761,7 @@
 				COPY_PHASE_STRIP = YES;
 				DEVELOPMENT_TEAM = 5657UV779W;
 				ENABLE_NS_ASSERTIONS = YES;
+				FRAMEWORK_SEARCH_PATHS = "";
 				FS_BUNDLE_BIN_DIR = Contents/Resources;
 				FS_BUNDLE_BIN_PATH = $FS_BUNDLE_PATH/$FS_BUNDLE_BIN_DIR;
 				FS_BUNDLE_PATH = /System/Library/Filesystems/ntfs.fs;
@@ -751,6 +781,8 @@
 				PRODUCT_NAME = btrfs;
 				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
+				SYSTEM_HEADER_SEARCH_PATHS = "$(SDK_DIR)/System/Library/Frameworks/Kernel.framework/Headers";
 				WARNING_CFLAGS = (
 					"-Wmost",
 					"-Wno-four-char-constants",

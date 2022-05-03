@@ -22,7 +22,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "btrfs.h"
+#include "btrfs_filesystem.h"
 #include "crc32c.h"
 
 #ifndef FSUC_GETUUID
@@ -131,12 +131,12 @@ static int do_getuuid(char *rdev) {
 }
 
 /**
- * do_probe - Examine a volume to see if we recognize it as an NTFS volume.
+ * do_probe - Examine a volume to see if we recognize it as a BTRFS volume.
  *
- * If the volume is recognized as an dfghsa volume look up its volume label and
+ * If the volume is recognized as a BTRFS volume look up its volume label and
  * output it to stdout then return FSUR_RECOGNIZED.
  *
- * If the volume is not an NTFS volume return FSUR_UNRECOGNIZED.
+ * If the volume is not a BTRFS volume return FSUR_UNRECOGNIZED.
  *
  * On error return FSUR_INVAL or FSUR_IO_FAIL.
  */
