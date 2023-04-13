@@ -23,7 +23,6 @@
 #include <unistd.h>
 
 #include "btrfs_filesystem.h"
-#include "crc32c.h"
 
 #ifndef FSUC_GETUUID
 #define FSUC_GETUUID 'k'
@@ -72,11 +71,9 @@ static int get_volume_superblock_record(char *rdev, superblock *sbrec) {
 		else {
 			sb = (superblock *)buf;
 			if(sb->magic == BTRFS_MAGIC) {
-				uint32_t crc32 = ~calc_crc32c(0xffffffff, (uint8_t*)&sb->uuid, (unsigned long)sizeof(superblock) - sizeof(sb->checksum));
-				if (crc32 == *((uint32_t*)sb->checksum)) {
-					memcpy(sbrec, sb, sizeof(*sb));
-					opresult = FSUR_RECOGNIZED;
-				}
+				/// @todo: calculate crc32
+				memcpy(sbrec, sb, sizeof(*sb));
+				opresult = FSUR_RECOGNIZED;
 			}
 			else {opresult = FSUR_UNRECOGNIZED;}
 		}
@@ -209,6 +206,7 @@ static int do_mount(const char *progname, char *dev, char *mp,
 		const bool removable __attribute__((unused)),
 		const bool readonly, const bool nosuid, const bool nodev)
 {
+	/// @todo: currently on /S/L/E, unused, change for debug later
 	char *const kextargs[] = { "/sbin/kextload",
 			"/System/Library/Extensions/btrfs.kext", NULL };
 	char *mountargs[] = { "/sbin/mount", "-w", "-o",
@@ -227,7 +225,7 @@ static int do_mount(const char *progname, char *dev, char *mp,
 	 * If the kext is not loaded, load it now.  Ignore any errors as the
 	 * mount will fail appropriately if the kext is not loaded.
 	 */
-	if (getvfsbyname("btrfs", &vfc))
+	if (getvfsbyname("BTRFS", &vfc))
 		(void)do_exec(progname, kextargs);
 	return do_exec(progname, mountargs);
 }
@@ -245,77 +243,89 @@ static int do_unmount(const char *progname, char *mp)
 }
 
 int main(int argc, char **argv) {
-    char *progname, *dev, *mp = NULL;
-    int err;
-    char opt;
-    bool removable, readonly, nosuid, nodev;
-    char rawdev[MAXPATHLEN];
-    char blockdev[MAXPATHLEN];
-    struct stat sb;
+	char *progname, *dev, *mp = NULL;
+	int err;
+	char opt;
+	bool removable, readonly, nosuid, nodev;
+	char rawdev[MAXPATHLEN];
+	char blockdev[MAXPATHLEN];
+	struct stat sb;
 
-    nodev = nosuid = readonly = removable = false;
-    
-    // Save & strip off program name.
-    progname = argv[0];
-    argc--;
-    argv++;
-    
-    if (argc < 2 || argv[0][0] != '-')
-        usage(progname);
-    opt = argv[0][1];
-    dev = argv[1];
-    argc -= 2;
-    argv += 2;
+	nodev = nosuid = readonly = removable = false;
 
-    // Check we have the right number of arguments
-    switch (opt) {
+	// Save & strip off program name.
+	progname = argv[0];
+	argc--;
+	argv++;
+
+	if (argc < 2 || argv[0][0] != '-')
+		usage(progname);
+	opt = argv[0][1];
+	dev = argv[1];
+	argc -= 2;
+	argv += 2;
+
+	// Check we have the right number of arguments
+	switch (opt) {
 		case FSUC_GETUUID:
-            if (argc)
-                usage(progname);
-            break;
-        case FSUC_PROBE:
-            // For probe need the two mountflags also.
-            if (argc != 2)
-                usage(progname);
-            break;
-        case FSUC_MOUNT:
-            // For mount need the mount point and four mountflags also.
-            if (argc != 5)
-                usage(progname);
-            break;
-        case FSUC_UNMOUNT:
-            // For unmount need the mount point also.
-            if (argc != 1)
-                usage(progname);
-            break;
-        default:
-            // Unsupported command.
-            usage(progname);
-            break;
-    }
-	
-	err = snprintf(rawdev, sizeof(rawdev), "/dev/r%s", dev);
-	if (err >= (int)sizeof(rawdev)) {
-		fprintf(stderr, "%s: Specified device name is too long.\n",
-				progname);
+			if (argc)
+				usage(progname);
+			break;
+		case FSUC_PROBE:
+			// For probe need the two mountflags also.
+			if (argc != 2)
+				usage(progname);
+			break;
+		case FSUC_MOUNT:
+			// For mount need the mount point and four mountflags also.
+			if (argc != 5)
+				usage(progname);
+			break;
+		case FSUC_UNMOUNT:
+			// For unmount need the mount point also.
+			if (argc != 1)
+				usage(progname);
+			break;
+		default:
+			// Unsupported command.
+			usage(progname);
+			break;
+	}
+
+	if (!strncmp(dev, "disk", 4)) {
+		err = snprintf(rawdev, sizeof(rawdev), "/dev/r%s", dev);
+		if (err >= (int)sizeof(rawdev)) {
+			fprintf(stderr, "%s: Specified device name is too long.\n",
+					progname);
+			exit(FSUR_INVAL);
+		}
+		if (stat(rawdev, &sb)) {
+			fprintf(stderr, "%s: stat %s failed, %s\n", progname, rawdev,
+					strerror(errno));
+			exit(FSUR_INVAL);
+		}
+		err = snprintf(blockdev, sizeof(blockdev), "/dev/%s", dev);
+		if (err >= (int)sizeof(blockdev)) {
+			fprintf(stderr, "%s: Specified device name is too long.\n",
+					progname);
+			exit(FSUR_INVAL);
+		}
+		if (stat(blockdev, &sb)) {
+			fprintf(stderr, "%s: stat %s failed, %s\n", progname, blockdev,
+					strerror(errno));
+			exit(FSUR_INVAL);
+		}
+	} else if (!strncmp(dev, "/dev/fd/", 8)) {
+		if (opt != FSUC_PROBE && opt != FSUC_GETUUID) {
+				fprintf(stderr, "%s: only support fd during probing or getting volume uuid", progname);
+				exit(FSUR_INVAL);
+		}
+		/* fs_probe() bellow will handle fdesc file path */
+		strlcpy(rawdev, dev, MAXPATHLEN);
+	} else {
 		exit(FSUR_INVAL);
 	}
-	if (stat(rawdev, &sb)) {
-		fprintf(stderr, "%s: stat %s failed, %s\n", progname, rawdev,
-				strerror(errno));
-		exit(FSUR_INVAL);
-	}
-	err = snprintf(blockdev, sizeof(blockdev), "/dev/%s", dev);
-	if (err >= (int)sizeof(blockdev)) {
-		fprintf(stderr, "%s: Specified device name is too long.\n",
-				progname);
-		exit(FSUR_INVAL);
-	}
-	if (stat(blockdev, &sb)) {
-		fprintf(stderr, "%s: stat %s failed, %s\n", progname, blockdev,
-				strerror(errno));
-		exit(FSUR_INVAL);
-	}
+
 	/* Get the mount point for the mount and unmount cases. */
 	if (opt == FSUC_MOUNT || opt == FSUC_UNMOUNT) {
 		mp = argv[0];

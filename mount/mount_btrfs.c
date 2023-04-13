@@ -143,9 +143,8 @@ int main(int argc, char **argv)
 	btrfs_mount_options_header *opts_hdr;
 	int ch, dummy, flags = 0;
 	char dir[MAXPATHLEN];
-	const char btrfs[] = "btrfs";
-	char *const kextargs[] = { "/sbin/kextload",
-			"/System/Library/Extensions/btrfs.kext", NULL };
+	const char btrfs[] = "BTRFS";
+	char *const kextargs[] = { "/sbin/kextload", "/Users/yehia/macos_btrfs/macos-btrfs.kext", NULL };
 	struct vfsconf vfc;
 	bool noacl = FALSE;
 	
@@ -212,9 +211,12 @@ int main(int argc, char **argv)
 		if (getvfsbyname(btrfs, &vfc))
 			errx(EX_OSERR, "Failed to load BTRFS file system kext.");
 	}
-	
+
+	fprintf(stderr, "BTRFS stepping into mount\n");
 	if (mount(btrfs, dir, flags, opts_hdr) < 0)
 		err(EX_OSERR, "%s on %s", dev, dir);
+	fprintf(stderr, "mounted on BTRFS\n");
+	unmount(btrfs, MNT_FORCE);
 	free(opts_hdr);
 	
 	return 0;

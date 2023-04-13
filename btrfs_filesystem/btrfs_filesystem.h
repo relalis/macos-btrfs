@@ -132,17 +132,34 @@ static const uint64_t superblock_addrs[] = { 0x10000, 0x4000000, 0x4000000000, 0
 #define CSUM_TYPE_SHA256        2
 #define CSUM_TYPE_BLAKE2        3
 
+#define BTRFS_TYPE_UNKNOWN   0
+#define BTRFS_TYPE_FILE      1
+#define BTRFS_TYPE_DIRECTORY 2
+#define BTRFS_TYPE_CHARDEV   3
+#define BTRFS_TYPE_BLOCKDEV  4
+#define BTRFS_TYPE_FIFO      5
+#define BTRFS_TYPE_SOCKET    6
+#define BTRFS_TYPE_SYMLINK   7
+#define BTRFS_TYPE_EA        8
+
+#define BTRFS_CSUM_SIZE 32
+#define BTRFS_FSID_SIZE 16
+#define BTRFS_UUID_SIZE 16
+#define BTRFS_LABEL_SIZE 256
+#define BTRFS_SYSTEM_CHUNK_ARRAY_SIZE 2048
+#define BTRFS_NUM_BACKUP_ROOTS 4
+
 #pragma pack(push, 1)
 
-typedef struct {
+typedef struct BTRFS_UUID {
 	uint8_t uuid[16];
-} BTRFS_UUID;
+} btrfs_uuid;
 
-typedef struct {
+typedef struct KEY {
 	uint64_t obj_id;
 	uint8_t obj_type;
 	uint64_t offset;
-} KEY;
+} btrfs_key;
 
 #define HEADER_FLAG_WRITTEN         0x000000000000001
 #define HEADER_FLAG_SHARED_BACKREF  0x000000000000002
@@ -150,10 +167,11 @@ typedef struct {
 
 /*!
  @struct tree_header
+ 
  @abstract
  @field csum Must match superblock values
  @field fs_uuid FS specific uuid
- @field address
+ @field address Which block this node is supposed to live in
  @field flags
  @field chunk_tree_uuid
  @field generation
@@ -163,19 +181,20 @@ typedef struct {
  @discussion first four must match the super block. Remaining fields allowed to be different from the super.
  */
 typedef struct {
-	uint8_t csum[32];
-	BTRFS_UUID fs_uuid;
+	uint8_t csum[BTRFS_CSUM_SIZE];
+	btrfs_uuid fs_uuid;
 	uint64_t address;
 	uint64_t flags;
-	BTRFS_UUID chunk_tree_uuid;
+	btrfs_uuid chunk_tree_uuid;
 	uint64_t generation;
 	uint64_t tree_id;
 	uint32_t num_items;
 	uint8_t level;
-} tree_header;
+} btrfs_tree_header;
 
 /*!
  @struct leaf_node
+ 
  @abstract btrfs leaf item
  @field offset where to find the item in the leaf
  @field size size of item in the leaf
@@ -184,13 +203,14 @@ typedef struct {
  Size field of struct btrfs_item indicates how much data is stored.
  */
 typedef struct {
-	KEY key;
+	btrfs_key key;
 	uint32_t offset;
 	uint32_t size;
-} leaf_node;
+} btrfs_leaf_node;
 
 /*!
  @struct internal_node
+ 
  @abstract holds pointers to other blocks
  @field key
  @field blockptr
@@ -198,13 +218,14 @@ typedef struct {
  @discussion all non-leaf blocks are nodes, they hold only keys and pointers to other blocks
  */
 typedef struct {
-	KEY key;
+	btrfs_key key;
 	uint64_t address;
 	uint64_t generation;
-} internal_node;
+} btrfs_internal_node;
 
 /*!
  @struct btrfs_dev_item
+ 
  @abstract Represents a complete block device.
  @field dev_id the internal btrfs device id
  @field num_bytes size of the device
@@ -222,7 +243,7 @@ typedef struct {
  @field fs_uuid uuid of FS that owns this device
  @discussion `dev_id` matches the dev_id in the filesystem's list of struct btrfs_devices.
  */
-typedef struct {
+typedef struct DEV_ITEM {
 	uint64_t dev_id;
 	uint64_t num_bytes;
 	uint64_t bytes_used;
@@ -235,9 +256,9 @@ typedef struct {
 	uint32_t dev_group;
 	uint8_t seek_speed;
 	uint8_t bandwidth;
-	BTRFS_UUID device_uuid;
-	BTRFS_UUID fs_uuid;
-} DEV_ITEM;
+	btrfs_uuid device_uuid;
+	btrfs_uuid fs_uuid;
+} btrfs_dev_item;
 
 #define SYS_CHUNK_ARRAY_SIZE 0x800
 #define BTRFS_NUM_BACKUP_ROOTS 4
@@ -317,7 +338,7 @@ typedef struct {
  @field node_size
  @field leaf_size
  @field stripe_size
- @field n sys_chunk_array_size
+ @field sys_chunk_array_size
  @field chunk_root_generation
  @field compat_flags
  @field compat_ro_flags only implementations that support the flags can write to the filesystem
@@ -340,8 +361,8 @@ typedef struct {
  @todo expand documentation.
  */
 typedef struct {
-	uint8_t checksum[32];
-	BTRFS_UUID uuid;
+	uint8_t checksum[BTRFS_CSUM_SIZE];
+	btrfs_uuid uuid;
 	uint64_t sb_phys_addr;
 	uint64_t flags;
 	uint64_t magic;
@@ -358,7 +379,7 @@ typedef struct {
 	uint32_t node_size;
 	uint32_t leaf_size;
 	uint32_t stripe_size;
-	uint32_t n;
+	uint32_t sys_chunk_array_valid;
 	uint64_t chunk_root_generation;
 	uint64_t compat_flags;
 	uint64_t compat_ro_flags;
@@ -367,43 +388,25 @@ typedef struct {
 	uint8_t root_level;
 	uint8_t chunk_root_level;
 	uint8_t log_root_level;
-	DEV_ITEM dev_item;
+	btrfs_dev_item dev_item;
 	char label[MAX_LABEL_SIZE];
 	uint64_t cache_generation;
 	uint64_t uuid_tree_generation;
-	BTRFS_UUID metadata_uuid;
+	btrfs_uuid metadata_uuid;
 	uint64_t reserved[28];
 	uint8_t sys_chunk_array[SYS_CHUNK_ARRAY_SIZE];
 	superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
-	uint8_t reserved2[565];
-} superblock;
-
-#define BTRFS_TYPE_UNKNOWN   0
-#define BTRFS_TYPE_FILE      1
-#define BTRFS_TYPE_DIRECTORY 2
-#define BTRFS_TYPE_CHARDEV   3
-#define BTRFS_TYPE_BLOCKDEV  4
-#define BTRFS_TYPE_FIFO      5
-#define BTRFS_TYPE_SOCKET    6
-#define BTRFS_TYPE_SYMLINK   7
-#define BTRFS_TYPE_EA        8
-
-#define BTRFS_CSUM_SIZE 32
-#define BTRFS_FSID_SIZE 16
-#define BTRFS_UUID_SIZE 16
-#define BTRFS_LABEL_SIZE 256
-#define BTRFS_SYSTEM_CHUNK_ARRAY_SIZE 2048
-#define BTRFS_NUM_BACKUP_ROOTS 4
+//	uint8_t reserved2[565];
+} __attribute__((__packed__, __aligned__(8))) superblock;
 
 /*!
  @struct DIR_ITEM
  @abstract represents the header for a directory entry item used for both standard user-visible directories and internal directories used to manage named extended attributes
  @field key Key for the INODE_ITEM or ROOT_ITEM associated with this entry. Unused and zeroed out when the entry describes an extended attribute.
  @field transid transid of the transaction that created this entry.
- @field m Length of the extended attribute associated with this entry. 0 for standard directories.
- @field n Length of directory entry name.
+ @field extended_attribute_len Length of the extended attribute associated with this entry. 0 for standard directories.
+ @field name_length Length of directory entry name.
  @field type
- @field name
  @discussion This structure  is associated with the DIR_ITEM and XATTR_ITEM items. This structure is not used outside of these items. It is immediately followed by the name. If it represents an extended attribute, the attribute data immediately follows the name.
  
  Types:
@@ -418,24 +421,23 @@ typedef struct {
 		BTRFS_FT_XATTR = 8 		This value is used on-disk and internally but is not user-visible.
  @todo expand documentation. WinBtrfs adds `name`, which is missing from the linux kernel header; possibly a struct packing method.
  */
-typedef struct {
-	KEY key;
+typedef struct DIR_ITEM {
+	btrfs_key key;
 	uint64_t transid;
-	uint16_t m;
-	uint16_t n;
+	uint16_t extended_attribute_len;
+	uint16_t name_length;
 	uint8_t type;
-	char name[1];
-} DIR_ITEM;
+} btrfs_dir_item;
 
 /*!
  @struct btrfs_timespec
  @field seconds
  @field nanoseconds
  */
-typedef struct {
+typedef struct BTRFS_TIME {
 	uint64_t seconds;
 	uint32_t nanoseconds;
-} BTRFS_TIME;
+} btrfs_timespec;
 
 /*!
  @struct INODE_ITEM
@@ -458,7 +460,7 @@ typedef struct {
  @field mtime st_mtime
  @field otime Timestamp of inode creation.
  */
-typedef struct {
+typedef struct INODE_ITEM {
 	uint64_t generation;
 	uint64_t transid;
 	uint64_t st_size;
@@ -472,11 +474,11 @@ typedef struct {
 	uint64_t flags;
 	uint64_t sequence;
 	uint8_t reserved[32];
-	BTRFS_TIME atime;
-	BTRFS_TIME ctime;
-	BTRFS_TIME mtime;
-	BTRFS_TIME otime;
-} INODE_ITEM;
+	btrfs_timespec atime;
+	btrfs_timespec ctime;
+	btrfs_timespec mtime;
+	btrfs_timespec otime;
+} btrfs_inode_item;
 
 /*!
  @struct ROOT_ITEM
@@ -508,8 +510,8 @@ typedef struct {
  @field reserved For future expansion
  @discussion This structure holds defines the the root of a btree. It is associated with the ROOT_ITEM type. This structure is never used outside of this item.
  */
-typedef struct {
-	INODE_ITEM inode;
+typedef struct ROOT_ITEM {
+	btrfs_inode_item inode;
 	uint64_t generation;
 	uint64_t objid;
 	uint64_t block_number;
@@ -518,23 +520,23 @@ typedef struct {
 	uint64_t last_snapshot_generation;
 	uint64_t flags;
 	uint32_t num_references;
-	KEY drop_progress;
+	btrfs_key drop_progress;
 	uint8_t drop_level;
 	uint8_t root_level;
 	uint64_t generation2;
-	BTRFS_UUID uuid;
-	BTRFS_UUID parent_uuid;
-	BTRFS_UUID received_uuid;
+	btrfs_uuid uuid;
+	btrfs_uuid parent_uuid;
+	btrfs_uuid received_uuid;
 	uint64_t ctransid;
 	uint64_t otransid;
 	uint64_t stransid;
 	uint64_t rtransid;
-	BTRFS_TIME ctime;
-	BTRFS_TIME otime;
-	BTRFS_TIME stime;
-	BTRFS_TIME rtime;
+	btrfs_timespec ctime;
+	btrfs_timespec otime;
+	btrfs_timespec stime;
+	btrfs_timespec rtime;
 	uint64_t reserved[8];
-} ROOT_ITEM;
+} btrfs_root_item;
 
 /*!
  @struct CHUNK_ITEM
@@ -551,9 +553,11 @@ typedef struct {
  @discussion This structure contains the mapping from a virtualized usable byte range within the backing storage to a set of one or more stripes on individual backing devices. In addition to the mapping, hints on optimal I/O parameters for this chunk. It is associated with CHUNK_ITEM items.
  
  Although the structure definition only contains one stripe member, CHUNK_ITEM items contain as many struct btrfs_stripe structures as specified in the num_stripes and sub_stripes fields.
- @todo Linux kernel header adds a `struct stripe` at the end of this structure, to store additional stripes in the item chunk.
- */
-typedef struct {
+*/
+
+/// @todo Linux kernel header adds a `struct stripe` at the end of this structure, to store additional stripes in the item chunk.
+
+typedef struct CHUNK_ITEM {
 	uint64_t size;
 	uint64_t root_id;
 	uint64_t stripe_length;
@@ -563,20 +567,20 @@ typedef struct {
 	uint32_t sector_size;
 	uint16_t num_stripes;
 	uint16_t sub_stripes;
-} CHUNK_ITEM;
+} btrfs_chunk_item;
 
 /*!
- @struct CHUNK_ITEM_STRIPE
+ @struct btrfs_chunk_item_stripe
  @abstract This structure is used to define the backing device storage that compose a btrfs chunk. It is associated with the CHUNK_ITEM item. This structure is never used outside of this item.
  @field dev_id Device ID that contains this stripe
  @field offset Location of the start of the stripe, in bytes. Size is determined by the stripe_len field in struct btrfs_chunk.
  @field dev_uuid UUID of the device that contains this stripe. Used to confirm that the correct device has been retrieved.
  */
-typedef struct {
+typedef struct CHUNK_ITEM_STRIPE {
 	uint64_t dev_id;
 	uint64_t offset;
-	BTRFS_UUID dev_uuid;
-} CHUNK_ITEM_STRIPE;
+	btrfs_uuid dev_uuid;
+} btrfs_chunk_item_stripe;
 
 /*!
  @struct EXTENT_DATA
@@ -590,7 +594,7 @@ typedef struct {
 		compression, encryption: 32 bits for the various ways we might encode the data, including compression and encryption.  If any of these are set to something a given disk format doesn't understand it is treated like an incompat flag for reading and writing, but not for stat.
 		offset: This allows a file extent to point into the middle of an existing extent on disk, sharing it between two snapshots (useful if some bytes in the middle of the extent have changed)
  */
-typedef struct {
+typedef struct EXTENT_DATA {
 	uint64_t generation;
 	uint64_t decoded_size;
 	uint8_t compression;
@@ -598,43 +602,39 @@ typedef struct {
 	uint16_t encoding;
 	uint8_t type;
 	uint8_t data[1];
-} EXTENT_DATA;
+} btrfs_extent_data;
 
-typedef struct {
+typedef struct EXTENT_DATA2 {
 	uint64_t address;
 	uint64_t size;
 	uint64_t offset;
 	uint64_t num_bytes;
-} EXTENT_DATA2;
+} btrfs_extent_data2;
 
 /*!
- @struct INODE_REF
+ @struct btrfs_inode_ref
  @abstract Allows you to find the btrfs_dir_item entries or the filename for a given inode
  @field index Index of the inode this item's referencing in the directory
- @field n length of the name, following this item
- @field name
+ @field name_len length of the name, following this item
  @discussion Indexed by (inode_number, BTRFS_INODE_REF_ITEM, parent_inode). Allows you to find the btrfs_dir_item entries or the filename for a given inode. There is one of these for each hard-linked copy of a file.
  */
-typedef struct {
+typedef struct INODE_REF {
 	uint64_t index;
-	uint16_t n;
-	char name[1];
-} INODE_REF;
+	uint16_t name_len;
+} btrfs_inode_ref;
 
 /*!
- @struct INODE_EXTREF
+ @struct btrfs_inode_extref
  @field dir
  @field index Index of the inode this item's referencing in the directory
- @field n length of the name
- @field name name of the inode
+ @field name_len length of the name, following this item
  @discussion From an inode to a name in a directory. Used if the regarding INODE_REF array ran out of space. This item requires the EXTENDED_IREF feature.
  */
-typedef struct {
+typedef struct INODE_EXTREF {
 	uint64_t dir;
 	uint64_t index;
-	uint16_t n;
-	char name[1];
-} INODE_EXTREF;
+	uint16_t name_len;
+} btrfs_inode_extref;
 
 #define EXTENT_ITEM_DATA            0x001
 #define EXTENT_ITEM_TREE_BLOCK      0x002
@@ -659,7 +659,7 @@ typedef struct {
  @field level
  */
 typedef struct {
-	KEY firstitem;
+	btrfs_key firstitem;
 	uint8_t level;
 } EXTENT_ITEM2;
 
@@ -673,7 +673,7 @@ typedef struct {
 
 typedef struct {
 	EXTENT_ITEM extent_item;
-	KEY firstitem;
+	btrfs_key firstitem;
 	uint8_t level;
 } EXTENT_ITEM_TREE;
 
@@ -683,7 +683,7 @@ typedef struct {
 
 /*!
  @struct EXTENT_DATA_REF
- @abstract 
+ @abstract
  @field root
  @field objid
  @field offset
@@ -771,7 +771,7 @@ typedef struct {
  @field num_bitmaps
  */
 typedef struct {
-	KEY key;
+	btrfs_key key;
 	uint64_t generation;
 	uint64_t num_entries;
 	uint64_t num_bitmaps;
@@ -807,7 +807,7 @@ typedef struct {
 	uint64_t objid;
 	uint64_t address;
 	uint64_t length;
-	BTRFS_UUID chunktree_uuid;
+	btrfs_uuid chunktree_uuid;
 } DEV_EXTENT;
 
 #define BALANCE_FLAGS_DATA          0x1
