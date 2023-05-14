@@ -208,7 +208,7 @@ static int do_mount(const char *progname, char *dev, char *mp,
 {
 	/// @todo: currently on /S/L/E, unused, change for debug later
 	char *const kextargs[] = { "/sbin/kextload",
-			"/System/Library/Extensions/btrfs.kext", NULL };
+			"/Users/yehia/macos_btrfs/macos-btrfs.kext", NULL };
 	char *mountargs[] = { "/sbin/mount", "-w", "-o",
 			"suid", "-o", "dev", "-t", "btrfs", dev, mp, NULL };
 	struct vfsconf vfc;
@@ -225,7 +225,7 @@ static int do_mount(const char *progname, char *dev, char *mp,
 	 * If the kext is not loaded, load it now.  Ignore any errors as the
 	 * mount will fail appropriately if the kext is not loaded.
 	 */
-	if (getvfsbyname("BTRFS", &vfc))
+	if (getvfsbyname("btrfs", &vfc))
 		(void)do_exec(progname, kextargs);
 	return do_exec(progname, mountargs);
 }
