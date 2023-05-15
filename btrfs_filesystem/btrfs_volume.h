@@ -51,7 +51,12 @@ typedef struct _btrfs_volume {
 	gid_t gid;
 	mode_t fmask;
 	mode_t gmask;
+	
+	btrfs_root_item fs_tree_root;	/// fs_tree_root, bootstrapped
+	uint64_t fs_tree_root_off;		/// physical offset of fs_tree_root
 
+	
+	
 	btrfs_chunk_tree_record *ct_rec;
 } btrfs_inmem_vol;
 

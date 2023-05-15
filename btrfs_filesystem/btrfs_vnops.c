@@ -33,6 +33,7 @@ struct vnodeopv_entry_desc btrfs_vfs_vnodeop_entries[] = {
 	{ &vnop_getattr_desc, (VNOP_FUNC) btrfs_vnop_getattr },
 	{ &vnop_read_desc, (VNOP_FUNC) btrfs_vnop_read },
 	{ &vnop_write_desc, (VNOP_FUNC) btrfs_vnop_write },
+	{ &vnop_lookup_desc, (VNOP_FUNC) btrfs_vnop_lookup },
 	// Add any additional vnode operation functions here /
 	// For example: { &vnop_create_desc, btrfs_vfs_create }, */
 	{ NULL, NULL }
