@@ -55,9 +55,9 @@ typedef struct _btrfs_volume {
 	btrfs_root_item fs_tree_root;	/// fs_tree_root, bootstrapped
 	uint64_t fs_tree_root_off;		/// physical offset of fs_tree_root
 
-	
-	
 	btrfs_chunk_tree_record *ct_rec;
+
+	btrfs_leaf_node_list_entry *root_dir; /// root_directory, evaluated by btrfs_vfs_root
 } btrfs_inmem_vol;
 
 #endif /* btrfs_volume_h */

@@ -84,6 +84,33 @@ struct vfsconf btrfs_vfs_conf = {
 	.vfc_flags = 0,
 };
 
+static errno_t btrfs_get_root_vnode(struct mount *mp, ino_t ino, struct vnode **vpp, vfs_context_t context) {
+	struct vnode *vp;
+	errno_t err = -EINVAL;
+
+	// checks if the vnode is already in the cache
+	/*err = vnode_getfromfsid(mp, ino, &vp);
+	if(err == 0) {
+		*vpp = vp;
+		return 0;
+	}*/
+
+	// create vnode if it isn't in the cache
+	/*
+	err = vnode_create(mp, ino, NULL, VNODE_CREATE, &vp);
+	if(err) {
+		// failed to create vnode
+		return -EIO;
+	}*/
+
+	// add vnode to cache
+	/*
+	vnode_addfsid(vp);
+	*vpp = vp;
+	*/
+	return err;
+}
+
 static errno_t btrfs_blocksize_set(mount_t mp, vnode_t dev_vn, uint32_t bsize, vfs_context_t ctx) {
 	errno_t err;
 	struct vfsioattr ia;
@@ -392,10 +419,7 @@ static errno_t btrfs_read_fs_tree_root(btrfs_inmem_vol *vol, char *root_buffer) 
 	btrfs_leaf_node_list_entry *cur_item;
 
 	LIST_FOREACH(cur_item, items, ptrs) {
-		if(cur_item->node.key.obj_id != BTRFS_ROOT_FSTREE || cur_item->node.key.obj_type != TYPE_ROOT_ITEM) {
-			DMESG_LOG("read_fs_tree_root() is skipping id %u type %u", cur_item->node.key.obj_id, cur_item->node.key.obj_type);
-			continue;
-		}
+		if(cur_item->node.key.obj_id != BTRFS_ROOT_FSTREE || cur_item->node.key.obj_type != TYPE_ROOT_ITEM) continue;
 		memcpy(&vol->fs_tree_root, root_buffer + cur_item->node.offset + sizeof(btrfs_tree_header), sizeof(btrfs_root_item));
 		vol->fs_tree_root_off = btrfs_chunk_get_offset(vol, vol->fs_tree_root.block_number);
 		ret = 0;
@@ -500,7 +524,7 @@ int btrfs_vfs_mount(struct mount *mp, vnode_t devvp, user_addr_t data, vfs_conte
 	vfs_setlocklocal(mp);
 
 	sfs->f_fsid.val[0] = (int32_t) dev;
-	sfs->f_fsid.val[0] = (int32_t) vfs_typenum(mp);
+//	sfs->f_fsid.val[0] = (int32_t) vfs_typenum(mp);
 
 	dev = vnode_specrdev(devvp);
 
@@ -571,14 +595,29 @@ int btrfs_vfs_mount(struct mount *mp, vnode_t devvp, user_addr_t data, vfs_conte
 		goto error_exit;
 	}
 
+	sfs->f_bsize = vol->sb_rec.sector_size;
+	sfs->f_blocks = vol->sb_rec.total_bytes;
+	sfs->f_bfree = vol->sb_rec.total_bytes - vol->sb_rec.bytes_used;
+	sfs->f_iosize = vol->sb_rec.node_size;
+	sfs->f_flags = vfs_flags(mp);
+	strcpy(sfs->f_fstypename, "btrfs", 5);
+	/*
+    st->f_iosize = mntp->attr.f_iosize;
+    st->f_bavail = mntp->attr.f_bavail;
+    st->f_bused = mntp->attr.f_bused;
+    st->f_files = mntp->attr.f_files;
+    st->f_ffree = mntp->attr.f_ffree;
+    st->f_fsid = mntp->attr.f_fsid;
+    st->f_owner = mntp->attr.f_owner;*/
+
 error_exit:
 	if(vol && vol->ct_rec) free_chunk_tree(vol->ct_rec);
 	_FREE(vol, M_TEMP);
 	DMESG_LOG("btrfs_vfs_mount pre-mortem ret: %d", ret);
 
 	/// this is to force the plugin to ALWAYS return input/output error. We only change this when it works, otherwise we're asking for the kernel to break.
-	ret = EIO;
-	btrfs_vfs_unmount(mp, MNT_FORCE, context);
+	//ret = EIO;
+	//btrfs_vfs_unmount(mp, MNT_FORCE, context);
 	return ret;
 }
 
@@ -597,7 +636,51 @@ unload_exit:
 
 // get root vnode of filesystem
 static int btrfs_vfs_root(struct mount *mp, struct vnode **vpp, vfs_context_t context) {
-	return 0;
+	btrfs_inmem_vol *vol = vfs_fsprivate(mp);
+	kauth_cred_t cred = vfs_context_ucred(context);
+	struct vnode *vp;
+	errno_t err = ENOENT; // Couldn't find root dir
+
+	buf_t bp;
+	char *tree_root_node = _MALLOC(vol->sb_rec.node_size, M_TEMP, M_WAITOK);
+	buf_meta_bread(vol->dev_vn, vol->fs_tree_root_off / vol->sb_rec.sector_size, vol->sb_rec.node_size, cred, &bp);
+	buf_setflags(bp, B_NOCACHE);
+	memcpy(tree_root_node, buf_dataptr(bp), vol->sb_rec.node_size);
+	buf_brelse(bp);
+
+	btrfs_tree_header header = btrfs_parse_header(tree_root_node);
+
+	if(header.level == 0) {
+		btrfs_leaf_list_record *items = btrfs_parse_leaf(tree_root_node);
+		btrfs_leaf_node_list_entry *cur_item;
+		LIST_FOREACH(cur_item, items, ptrs) {
+			if(cur_item->node.key.obj_type != TYPE_DIR_ITEM) continue;
+			btrfs_dir_item *dir_item = _MALLOC(sizeof(btrfs_dir_item), M_TEMP, M_ZERO | M_WAITOK);
+			memcpy(dir_item, tree_root_node + sizeof(btrfs_tree_header) + cur_item->node.offset, sizeof(btrfs_dir_item));
+
+			if(dir_item->type != TYPE_INODE_ITEM) goto free_dir;
+
+			if(dir_item->name_length == 0) {
+				DMESG_LOG("!!!!!!!!found root directory\n");
+				err = btrfs_get_root_vnode(mp, cur_item->node.key.obj_id, &vp, context);
+				if(err != 0) {
+					_FREE(dir_item, M_TEMP);
+					_FREE(tree_root_node, M_TEMP);
+					return err;
+				}
+
+				*vpp = vp;
+				_FREE(dir_item, M_TEMP);
+				_FREE(tree_root_node, M_TEMP);
+				return 0;
+			}
+			free_dir:
+			_FREE(dir_item, M_TEMP);
+			continue;
+		}
+	}
+	_FREE(tree_root_node, M_TEMP);
+	return err;
 }
 
 // get information about this filesystem
@@ -632,3 +715,21 @@ kern_return_t macos_btrfs_stop(kmod_info_t *ki, void *data) {
 
 	return e;
 }
+
+#ifdef __kext_makefile__
+extern kern_return_t _start(kmod_info_t *, void *);
+extern kern_return_t _stop(kmod_info_t *, void *);
+
+/* will expand name if it's a macro */
+#define KMOD_EXPLICIT_DECL2(name, ver, start, stop) \
+    __attribute__((visibility("default")))          \
+        KMOD_EXPLICIT_DECL(name, ver, start, stop)
+
+KMOD_EXPLICIT_DECL2(BUNDLEID, KEXTBUILD_S, _start, _stop)
+
+/* if you intended to write a kext library  NULLify _realmain and _antimain */
+__private_extern__ kmod_start_func_t *_realmain = macos_btrfs_start;
+__private_extern__ kmod_stop_func_t *_antimain = macos_btrfs_stop;
+
+__private_extern__ int _kext_apple_cc = __APPLE_CC__;
+#endif
