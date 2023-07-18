@@ -13,6 +13,9 @@
 #pragma once
 
 #include <stdint.h>
+#include <libkern/libkern.h>
+
+#define DMESG_LOG(fmt, ...) printf("[macos-BTRFS]: " fmt "\n", ##__VA_ARGS__);
 
 static const uint64_t superblock_addrs[] = { 0x10000, 0x4000000, 0x4000000000, 0x4000000000000, 0 };
 
@@ -973,5 +976,16 @@ typedef struct {
 	uint16_t type;
 	uint16_t length;
 } btrfs_send_tlv;
+
+/// this is wrong, it needs to use castagnoli crc32 (crc32c), not the standard crc32
+static inline uint64_t btrfs_name_hash(const char *name, int len) {
+	return crc32((uint32_t)~1, name, len);
+}
+
+#define kassert(ex)             (void) ((void) (ex))
+#define kassertf(ex, fmt, ...)  (void) ((void) (ex), ##__VA_ARGS__)
+#define kassert_null(ptr)       kassert(((void *) ptr) == NULL)
+#define kassert_nonnull(ptr)    kassert(((void *) ptr) != NULL)
+
 
 #pragma pack(pop)

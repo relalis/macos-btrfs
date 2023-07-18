@@ -6,41 +6,62 @@
 //
 
 #include "btrfs_parse.h"
+#include <IOKit/IOLib.h>
 
-#include <string.h>
-#include <libkern/libkern.h>
-
-/// @todo: this was testing on aleena, cleanup for mac
-btrfs_tree_header rbt_parse_header(char *buffer) {
-	btrfs_tree_header header_from_buffer; // = OSMalloc(sizeof(btrfs_tree_header), new_header_tag);
-
-	memcpy(&header_from_buffer, buffer, sizeof(btrfs_tree_header));
-
-	return header_from_buffer;
+btrfs_tree_header btrfs_parse_header(char *buffer) {
+	btrfs_tree_header header;
+	memcpy(&header, buffer, sizeof(btrfs_tree_header));
+	return header;
 }
 
-void rbt_parse_leaf_node(char *buffer) {
+btrfs_leaf_list_record *btrfs_parse_leaf(char *buffer) {
+	btrfs_leaf_list_record *leaves = IOMallocZero(sizeof(btrfs_leaf_list_record));
 
-	btrfs_tree_header header = rbt_parse_header(buffer);
+	if(leaves == NULL) {
+		DMESG_LOG("failed to allocate mem in parse_leaf()");
+		return NULL;
+	}
+
+	LIST_INIT(leaves);
+
+	// everything starts with a header
+	btrfs_tree_header header = btrfs_parse_header(buffer);
 
 	for(int i = 0; i < header.num_items; ++i) {
-		btrfs_leaf_node item = rbt_parse_leaf(buffer + sizeof(btrfs_leaf_node) * i);
-		printf("item.offset = %X\n", item.offset);
+		btrfs_leaf_node_list_entry *new_leaf = IOMallocZero(sizeof(btrfs_leaf_node_list_entry));
+		if(new_leaf == NULL) {
+			DMESG_LOG("failed to allocate mem for a leaf");
+			goto exit;
+		}
+		memcpy(&new_leaf->node, buffer + sizeof(btrfs_tree_header) + (i * sizeof(btrfs_leaf_node)), sizeof(btrfs_leaf_node));
+		LIST_INSERT_HEAD(leaves, new_leaf, ptrs);
 	}
+
+exit:
+	return leaves;
 }
 
-btrfs_leaf_node rbt_parse_leaf(char *buffer) {
-	btrfs_leaf_node return_leaf;
-	memcpy(&return_leaf, buffer, sizeof(btrfs_leaf_node));
-	return return_leaf;
-}
+btrfs_internal_list_record *btrfs_parse_node(char *buffer) {
+	btrfs_internal_list_record *nodes = IOMallocZero(sizeof(btrfs_internal_list_record));
+	LIST_INIT(nodes);
+	if(nodes == NULL) {
+		DMESG_LOG("failed to allocate mem in parse_node()");
+		return NULL;
+	}
 
-/// @todo: i forgot how i did this on aleena
+	btrfs_tree_header header = btrfs_parse_header(buffer);
 
-void *rbt_parse_node(char *buffer) {
-	btrfs_tree_header header = rbt_parse_header(buffer);
 	for(int i = 0; i < header.num_items; ++i) {
-		printf("parse_node() item %d is of type: %d\n", i, ((btrfs_internal_node*)(buffer + sizeof(btrfs_tree_header) + (sizeof(btrfs_internal_node) * i) ))->key.obj_type);
+		btrfs_internal_node_list_entry *new_node = IOMallocZero(sizeof(btrfs_internal_node_list_entry));
+		if(new_node == NULL) {
+			DMESG_LOG("failed to allocate mem for a leaf");
+			goto exit;
+		}
+		memcpy(&new_node->node, buffer + sizeof(btrfs_tree_header) + (i * sizeof(btrfs_internal_node)), sizeof(btrfs_internal_node));
+		LIST_INSERT_HEAD(nodes, new_node, ptrs);
+		DMESG_LOG("btrfs_parse_node() item %d is of type: %d", i, new_node->node.key.obj_type);
 	}
-	return NULL;
+
+exit:
+	return nodes;
 }

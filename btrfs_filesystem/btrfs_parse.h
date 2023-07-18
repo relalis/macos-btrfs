@@ -8,12 +8,10 @@
 #ifndef parse_h
 #define parse_h
 
-#include "btrfs_filesystem.h"
+#include "btrfs_volume.h"
 
-btrfs_tree_header rbt_parse_header(char *buffer);
-btrfs_leaf_node rbt_parse_leaf(char *buffer);
-
-void rbt_parse_leaf_node(char *buffer);
-void *rbt_parse_node(char *buffer);
+btrfs_tree_header btrfs_parse_header(char *buffer);
+btrfs_leaf_list_record *btrfs_parse_leaf(char *buffer);
+btrfs_internal_list_record *btrfs_parse_node(char *buffer);
 
 #endif /* parse_h */
