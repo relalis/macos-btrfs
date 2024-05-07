@@ -2,8 +2,9 @@
 //  btrfs_vfsops.c
 //  macos-btrfs
 //
-//  Created by Yehia Hafez on 5/2/22.
+//  Created by Yehia Hafez on 05/02/22.
 //
+
 
 #include <sys/kernel_types.h>
 #include <sys/types.h>
@@ -26,7 +27,10 @@
 #include "btrfs_volume.h"
 #include "btrfs_vnops.h"
 #include "btrfs_mapping.h"
-#include "btrfs_parse.h"
+#include "btrfs_header.h"
+#include "btrfs_leaf.h"
+#include "btrfs_chunk.h"
+#include "btrfs_root.h"
 
 /// Driver-wide lock to protect global data structures
 lck_grp_t *btrfs_lock = NULL;
@@ -44,11 +48,21 @@ static int btrfs_vfs_getattr(struct mount *, struct vfs_attr *, vfs_context_t);
  * functions DO NOT operate on fs vnodes, but on filesystem instances
  */
 struct vfsops btrfs_vfs_vfsops = {
+	/// function to mount a file system on a particular vnode. It is responsible for initializing data structures,
+	/// and filling in the vfs structure with all the relevant information (such as the vfs_data field). 
 	.vfs_mount = btrfs_vfs_mount,
+	/// function to release this file system, or unmount it. It is the one, for example, responsible for detecting
+	/// that a file system has still opened resources that cannot be released, and for returning an errno code that
+	/// results in the user process getting a ``device busy'' error. 
 	.vfs_unmount = btrfs_vfs_unmount,
+
 	.vfs_init = btrfs_vfs_init,
 	.vfs_start = btrfs_vfs_start,
+	/// will return the root vnode of this file system. Each file system has a root vnode from which traversal to all
+	/// other vnodes in the file system is enabled. This vnode usually is hand crafted (via kernel_malloc) and not
+	/// created as part of the standard ways of creating new vnodes (i.e. vn_lookup). 
 	.vfs_root = btrfs_vfs_root,
+	/// get attributes of file or dir???
 	.vfs_getattr = btrfs_vfs_getattr
 };
 
@@ -82,6 +96,16 @@ struct vfsconf btrfs_vfs_conf = {
 	.vfc_flags = 0,
 };
 
+btrfs_inmem_vol *btrfs_get_mount_from_mp(mount_t __nonnull mp) {
+	btrfs_inmem_vol *btrfsvol;
+	kassert_nonnull(mp);
+	btrfsvol = vfs_fsprivate(mp);
+	kassert_nonnull(btrfsvol);
+	kassert(btrfsvol->sb_rec.magic == BTRFS_MAGIC);
+	kassert(btrfsvol->mp == mp);
+	return btrfsvol;
+}
+
 static errno_t btrfs_blocksize_set(mount_t mp, vnode_t dev_vn, uint32_t bsize, vfs_context_t ctx) {
 	errno_t err;
 	struct vfsioattr ia;
@@ -102,17 +126,15 @@ static errno_t btrfs_blocksize_set(mount_t mp, vnode_t dev_vn, uint32_t bsize, v
 static errno_t btrfs_read_superblock_record(btrfs_inmem_vol *vol, kauth_cred_t cred) {
 	/// @discussion BTRFS stores at least 3 superblocks, indicated by `superblock_addrs[]`, and writes to all 3 simultaneously. for the time being, we're only checking the first (as mounting fails if the first is corrupted anyway, and later will be adding checks for the remaining superblocks.
 
-	mount_t mp = vol->mp;
-	vnode_t dev_vn = vol->dev_vn;
 	buf_t primary_superblock;
 	superblock *super = NULL;
-	uint32_t blocksize = vfs_devblocksize(mp);
+	uint32_t blocksize = vfs_devblocksize(vol->mp);
 
 	errno_t err;
 
 	DMESG_LOG("stepped into btrfs_read_superblock_record()");
 
-	err = buf_meta_bread(dev_vn, superblock_addrs[0]/BTRFS_SUPERBLOCK_SIZE, blocksize, cred, &primary_superblock);
+	err = buf_meta_bread(vol->dev_vn, superblock_addrs[0]/BTRFS_SUPERBLOCK_SIZE, blocksize, cred, &primary_superblock);
 
 	buf_setflags(primary_superblock, B_NOCACHE);
 
@@ -138,255 +160,35 @@ static errno_t btrfs_read_superblock_record(btrfs_inmem_vol *vol, kauth_cred_t c
 	return err;
 }
 
-static errno_t btrfs_read_chunk_tree(btrfs_inmem_vol *vol, char *buffer) {
+/*static errno_t btrfs_read_chunk_tree(btrfs_inmem_vol *vol, char *buffer) {
 	btrfs_tree_header root_header = btrfs_parse_header(buffer);
 
 	if(root_header.level == 0) {
 		DMESG_LOG("btrfs_read_chunk_tree() parsing a leaf node");
-		// We're parsing a leaf node here
-		btrfs_leaf_list_record *items = btrfs_parse_leaf(buffer);
-		btrfs_leaf_node_list_entry *cur_item;
+		btrfs_list *items;
 
-		LIST_FOREACH(cur_item, items, ptrs) {
-			DMESG_LOG("processing item of type %d", cur_item->node.key.obj_type);
-			int test;
-			if(cur_item->node.key.obj_type != TYPE_CHUNK_ITEM) continue;
+		if(btrfs_parse_leaf(buffer, items)) {
+			// traverse along the list
+			while(items->child != 0) {
+				// create a new temporary item to hold the node
+				btrfs_leaf_node *cur_item = items->node;
+				if(cur_item->key.obj_type != TYPE_CHUNK_ITEM) {
+					items = items->child;
+					continue;
+				}
 
-			btrfs_chunk_item *nzItem = IOMallocZero(sizeof(btrfs_chunk_item));
-			if(nzItem == NULL) return -ENOMEM;
-			btrfs_chunk_item_stripe *nzStripe = IOMallocZero(sizeof(btrfs_chunk_item_stripe));
-			if(nzStripe == NULL) return -ENOMEM;
-
-			memcpy(nzItem,
-				   buffer + sizeof(btrfs_tree_header) + cur_item->node.offset,
-				   sizeof(btrfs_chunk_item)
-			);
-			
-			memcpy(nzStripe,
-				   buffer + sizeof(btrfs_tree_header) + cur_item->node.offset + sizeof(btrfs_chunk_item),
-				   sizeof(btrfs_chunk_item_stripe)
-			);
-			
-			DMESG_LOG("%llu", nzItem->stripe_length);
-
-			btrfs_chunk_tree_entry *new_entry = IOMallocZero(sizeof(btrfs_chunk_tree_entry));
-			if(new_entry == NULL) return -ENOMEM;
-
-			new_entry->key.start = cur_item->node.key.offset;
-			new_entry->key.size = nzItem->size;
-			new_entry->value.offset = nzStripe->offset;
-
-			DMESG_LOG("leaf item offset %llu size %llu stripe at %llu", cur_item->node.key.offset, nzItem->size, nzStripe->offset);
-			LIST_INSERT_HEAD(vol->ct_rec, new_entry, ptrs);
-		
-			_FREE(nzItem, M_TEMP);
-			_FREE(nzStripe, M_TEMP);
+				btrfs_chunk_item *new_chunk = IOMallocZero(sizeof(btrfs_chunk_item));
+				if(new_chunk == NULL) {
+					return -ENOMEM; // or some proper memory handling
+				}
+				btrfs_chunk_item_stripe *new_stripe = IOMalloc(sizeof(btrfs_chunk_item_stripe));
+				if(new_stripe == NULL) {
+					return -ENOMEM;
+				}
+			}
 		}
-	
-		// @todo: this is a placeholder function, for now. We don't actually want to remove the items just yet.
-		// Don't forget to free the list when you're done with it
-		btrfs_leaf_node_list_entry *item, *tmp;
-		LIST_FOREACH_SAFE(item, items, ptrs, tmp) {
-			LIST_REMOVE(item, ptrs);
-			_FREE(item, M_TEMP);
-		}
-
-	} else {
-		DMESG_LOG("btrfs_read_chunk_tree() parsing an internal node");
-		btrfs_internal_list_record *nodes = btrfs_parse_node(buffer);
-		btrfs_internal_node_list_entry *cur_node;
-
-		LIST_FOREACH(cur_node, nodes, ptrs) {
-			DMESG_LOG("parse_node() stump");
-		}
-
-		btrfs_internal_node_list_entry *node, *tmp;
-		LIST_FOREACH_SAFE(node, nodes, ptrs, tmp) {
-			LIST_REMOVE(node, ptrs);
-			_FREE(node, M_TEMP);
-		}
-
-
-		// We're parsing an internal node here
 	}
-	return 0;
-}
-
-static errno_t btrfs_bootstrap_chunk_tree(btrfs_inmem_vol *vol) {
-	/// @discussion we only really need to read the root chunk item, and bootstrap from there
-	/// the rest is just unnecessary. remove the loop, and build from there
-
-	btrfs_chunk_item *t_chunk;
-	btrfs_key *t_key;
-	btrfs_chunk_item_stripe *t_stripe;
-	btrfs_chunk_tree_entry *t_entry;
-
-	vol->ct_rec = IOMallocZero(sizeof(btrfs_chunk_tree_record));
-	if (vol->ct_rec == NULL) {
-		return -ENOMEM; // or some appropriate error handling
-	}
-	// Initialize the list here
-	LIST_INIT(vol->ct_rec);
-
-	/// @todo: fix this
-
-#warning this is generating a false chunk
-	for(int i = 0; i < vol->sb_rec.sys_chunk_array_valid; i += (sizeof(btrfs_key) + sizeof(btrfs_chunk_item))) {
-		if(i + sizeof(btrfs_key) > vol->sb_rec.sys_chunk_array_valid) { DMESG_LOG("short key read"); break; }
-
-		t_key = (btrfs_key*)&vol->sb_rec.sys_chunk_array[i];
-
-		i += sizeof(btrfs_key);
-
-		t_chunk = (btrfs_chunk_item*)&vol->sb_rec.sys_chunk_array[i];
-		
-		i += sizeof(btrfs_chunk_item);
-
-		if(t_key->obj_type != TYPE_CHUNK_ITEM) {
-			DMESG_LOG("unknown item type %d in key at offset %d", t_key->obj_type, i);
-			break;
-		}
-		
-		DMESG_LOG("found %d stripes", t_chunk->num_stripes);
-		if(t_chunk->num_stripes == 0) break;
-		
-		t_stripe = (btrfs_chunk_item_stripe*)&vol->sb_rec.sys_chunk_array[i];
-		i += sizeof(btrfs_chunk_item_stripe) * t_chunk->num_stripes;
-
-		t_entry = IOMallocZero(sizeof(btrfs_chunk_tree_entry));
-		if(!t_entry) {
-			return -ENOMEM;
-		}
-		t_entry->key.start = t_key->offset;
-		t_entry->key.size = t_chunk->size;
-		t_entry->value.offset = t_stripe->offset;
-		DMESG_LOG("inserted key.start %llu key.size %llu value.offset %llu", t_key->obj_id, t_chunk->size, t_stripe->offset);
-		LIST_INSERT_HEAD(vol->ct_rec, t_entry, ptrs);
-	}
-	return 0;
-}
-
-static errno_t btrfs_read_chunk_tree_root(btrfs_inmem_vol *vol, uint64_t chunk_root, kauth_cred_t cred) {
-	btrfs_chunk_tree_entry *chunk = btrfs_get_chunk_from_logical_addr(vol, chunk_root);
-	int error;
-
-	if(chunk == NULL) {
-		DMESG_LOG("failed on btrfs_get_chunk_from_logical_addr() call");
-		return -EIO;
-	}
-
-	uint64_t offset = btrfs_chunk_get_offset(vol, chunk_root);
-	if(offset == 0) {
-		DMESG_LOG("failed to get root_tree offset.");
-		return -EIO;
-	}
-
-	DMESG_LOG("chunk->key.size %llu phys offset %llu", chunk->key.size, offset);
-
-	char *root = IOMallocZero(chunk->key.size);
-	if(root == NULL) {
-		DMESG_LOG("failed to allocate memory for chunk root");
-		return -ENOMEM;
-	}
-
-	DMESG_LOG("physical root is located at offset %llu, blocknum %llu, size %llu", offset, offset / vol->sb_rec.sector_size, chunk->key.size);
-
-	buf_t bp;
-
-	// buf_meta_bread only reads up to 4k
-	for(int i = 0; i < (chunk->key.size / vol->sb_rec.sector_size); ++i) {
-		error = buf_meta_bread(vol->dev_vn, (offset / vol->sb_rec.sector_size) + i, vol->sb_rec.sector_size, cred, &bp);
-		buf_setflags(bp, B_NOCACHE);
-		
-		if(error) {
-			DMESG_LOG("failed to read chunk_tree_root block %llu", (offset / vol->sb_rec.sector_size) + i);
-			goto error_exit;
-		}
-
-		memcpy(root + i * vol->sb_rec.sector_size, buf_dataptr(bp), vol->sb_rec.sector_size);
-		buf_brelse(bp);
-	}
-
-	DMESG_LOG("read %llu bytes into chunk tree", chunk->key.size);
-
-	error = btrfs_read_chunk_tree(vol, root);
-
-	DMESG_LOG("btrfs_read_chunk_tree() result is %d", error);
-
-error_exit:
-	_FREE(root, M_TEMP);
-	return error;
-}
-
-static errno_t btrfs_read_fs_tree_root(btrfs_inmem_vol *vol, char *root_buffer) {
-	/// this should be the BTRFS root
-	btrfs_tree_header root_header = btrfs_parse_header(root_buffer);
-
-	errno_t ret = FSUR_IO_FAIL;
-
-	if(root_header.level != 0) {
-		DMESG_LOG("read_fs_tree_root() error - root tree must be a leaf node");
-		return -EIO;
-	}
-
-	btrfs_leaf_list_record *items = btrfs_parse_leaf(root_buffer);
-	btrfs_leaf_node_list_entry *cur_item;
-
-	LIST_FOREACH(cur_item, items, ptrs) {
-		if(cur_item->node.key.obj_id != BTRFS_ROOT_FSTREE || cur_item->node.key.obj_type != TYPE_ROOT_ITEM) continue;
-		memcpy(&vol->fs_tree_root, root_buffer + cur_item->node.offset + sizeof(btrfs_tree_header), sizeof(btrfs_root_item));
-		vol->fs_tree_root_off = btrfs_chunk_get_offset(vol, vol->fs_tree_root.block_number);
-		ret = 0;
-	}
-
-	return ret;
-}
-
-static errno_t btrfs_read_root_tree_root(btrfs_inmem_vol *vol, uint64_t root_logical, kauth_cred_t cred) {
-	btrfs_chunk_tree_entry *logical_record = btrfs_get_chunk_from_logical_addr(vol, root_logical);
-	int error;
-
-	if(logical_record == NULL) {
-		DMESG_LOG("failed to retrieve btrfs_read_root_tree_root() logical record");
-		return -EIO;
-	}
-
-	uint64_t offset = btrfs_chunk_get_offset(vol, root_logical);
-	if(offset == 0) {
-		DMESG_LOG("couldn't get physical offset for btrfs_read_root_tree_root()");
-		return -EIO;
-	}
-	
-	char *root_buffer = IOMallocZero(logical_record->key.size);
-	if(root_buffer == NULL) {
-		DMESG_LOG("failed to allocate mem for root_tree_root");
-		return -ENOMEM;
-	}
-
-	buf_t bp;
-
-	for(int i = 0; i < (logical_record->key.size / vol->sb_rec.sector_size); ++i) {
-		error = buf_meta_bread(vol->dev_vn, (offset / vol->sb_rec.sector_size) + i, vol->sb_rec.sector_size, cred, &bp);
-		buf_setflags(bp, B_NOCACHE);
-
-		if(error) {
-			DMESG_LOG("failed to read chunk_tree_root block %llu", (offset / vol->sb_rec.sector_size) + i);
-			goto error_exit;
-		}
-
-		memcpy(root_buffer + i * vol->sb_rec.sector_size, buf_dataptr(bp), vol->sb_rec.sector_size);
-		buf_brelse(bp);
-	}
-
-	error = btrfs_read_fs_tree_root(vol, root_buffer);
-	if(error) {
-		DMESG_LOG("failed to read fs_tree, errno %d", error);
-		goto error_exit;
-	}
-error_exit:
-	_FREE(root_buffer, M_TEMP);
-	return error;
-}
+}*/
 
 /* Define the plugin's initialization function */
 int btrfs_vfs_init(struct vfsconf *vfsp) {
@@ -397,19 +199,98 @@ int btrfs_vfs_init(struct vfsconf *vfsp) {
 // VFS calls this to indicate mount is ready for usage
 // apparently this is unnecessary
 static int btrfs_vfs_start(struct mount *mp, int flags, vfs_context_t context) {
-	return 0;
+	return 1;
 }
 
-// frees the bootstrapped chunk tree
-void free_chunk_tree(btrfs_chunk_tree_record* ct_rec) {
-	if(ct_rec != NULL) {
-		btrfs_chunk_tree_entry* entry;
-		while (!LIST_EMPTY(ct_rec)) {
-			entry = LIST_FIRST(ct_rec);
-			LIST_REMOVE(entry, ptrs);
-			_FREE(entry, M_TEMP);
+/// @todo fixme
+static int btrfs_get_root_vnode(btrfs_inmem_vol * __nonnull btrfsmp, vnode_t * __nonnull vpp) {
+	int err = EAGAIN, err2;
+	vnode_t vn = NULL;
+	uint32_t vid;
+	struct vnode_fsparam param;
+
+	kassert_nonnull(btrfsmp);
+	kassert_nonnull(vpp);
+	kassert_null(*vpp);
+
+	lck_mtx_lock(btrfsmp->mtx_root);
+
+	while(err = EAGAIN) {
+		kassert_null(vn);
+		lck_mtx_assert(btrfsmp->mtx_root, LCK_MTX_ASSERT_OWNED);
+
+		if(btrfsmp->is_root_attaching) {
+			btrfsmp->is_root_waiting = true;
+			(void) msleep(&btrfsmp->rootvp, btrfsmp->mtx_root, PINOD, NULL, NULL);
+			kassert(btrfsmp->is_root_waiting == false);
+			err = EAGAIN;
+		} else if(btrfsmp->rootvp == NULLVP) {
+			// no root vnode detected
+			btrfsmp->is_root_attaching = true;
+			lck_mtx_unlock(btrfsmp->mtx_root);
+
+			param.vnfs_mp = btrfsmp->mp;
+			param.vnfs_vtype = VDIR;
+			param.vnfs_str = "btrfs";
+			param.vnfs_dvp = NULL;
+			param.vnfs_fsnode = NULL;
+			param.vnfs_vops = btrfs_vnop_p;
+			param.vnfs_markroot = 1;
+			param.vnfs_marksystem = 0;
+
+			param.vnfs_rdev = 0; // VBLK / VCHR support
+			param.vnfs_filesize = 0;	// VDIR doesn't have filesize
+			param.vnfs_cnp = NULL;
+			param.vnfs_flags = VNFS_NOCACHE | VNFS_CANTCACHE;
+			
+			err = vnode_create(VNCREATE_FLAVOR, sizeof(param), &param, &vn);
+			if(err == 0) {
+				kassert_nonnull(vn);
+				DMESG_LOG("vnode_create() ok vn: %p vid: %#x", vn, vnode_vid(vn));
+			} else {
+				kassert_null(vn);
+				DMESG_LOG("vnode_create() fail errno: %d", err);
+			}
+
+			lck_mtx_lock(btrfsmp->mtx_root);
+			if(err == 0) {
+				kassert_null(btrfsmp->rootvp);
+				btrfsmp->rootvp = vn;
+				err2 = vnode_addfsref(vn);
+				kassertf(err2 == 0, "vnode_addfsref() fail errno: %d", err2);
+
+				kassert(btrfsmp->is_root_attaching);
+				btrfsmp->is_root_attaching = false;
+				if(btrfsmp->is_root_waiting) {
+					btrfsmp->is_root_waiting = false;
+					wakeup(btrfsmp->rootvp);
+				}
+			}
+		} else {
+			// root vnode exists, obtain vnode vid
+			vn = btrfsmp->rootvp;
+			kassert_nonnull(vn);
+			vid = vnode_vid(vn);
+			lck_mtx_unlock(btrfsmp->mtx_root);
+
+			err = vnode_getwithvid(vn, vid);
+			if(err == 0) { }
+			else {
+				DMESG_LOG("vnode_getwithvid() fail errno: %d", err);
+				vn = NULL;
+				err = EAGAIN;
+			}
+			lck_mtx_lock(btrfsmp->mtx_root);
 		}
 	}
+
+	lck_mtx_unlock(btrfsmp->mtx_root);
+	if(err == 0) {
+		kassert_nonnull(vn);
+		*vpp = vn;
+	} else kassert_null(vn);
+
+	return err;
 }
 
 // Define the plugin's mount function
@@ -421,7 +302,7 @@ int btrfs_vfs_mount(struct mount *mp, vnode_t devvp, user_addr_t data, vfs_conte
 	dev_t dev;
 	superblock *sb_rec;
 	struct vfsstatfs *sfs = vfs_statfs(mp);
-	uint32_t blocksize;
+	int blocksize;
 
 	DMESG_LOG("entering btrfs_vfs_mount()");
 	OSKextRetainKextWithLoadTag(OSKextGetCurrentLoadTag());
@@ -491,30 +372,13 @@ int btrfs_vfs_mount(struct mount *mp, vnode_t devvp, user_addr_t data, vfs_conte
 
 	DMESG_LOG("post rec, superblock magic: %llu", vol->sb_rec.magic);
 	vfs_setfsprivate(mp, vol);
-	ret = btrfs_bootstrap_chunk_tree(vol);
-	if(ret) {
-		DMESG_LOG("failed to bootstrap chunk tree");
-		goto error_exit;
-	}
-
-	ret = btrfs_read_chunk_tree_root(vol, vol->sb_rec.chunk_tree_addr, cred);
-	if(ret) {
-		DMESG_LOG("failed to read chunk tree root");
-		goto error_exit;
-	}
-
-	ret = btrfs_read_root_tree_root(vol, vol->sb_rec.root_tree_addr, cred);
-	if(ret) {
-		DMESG_LOG("failed to read the root_tree_root");
-		goto error_exit;
-	}
 
 	sfs->f_bsize = vol->sb_rec.sector_size;
 	sfs->f_blocks = vol->sb_rec.total_bytes;
 	sfs->f_bfree = vol->sb_rec.total_bytes - vol->sb_rec.bytes_used;
 	sfs->f_iosize = vol->sb_rec.node_size;
 	sfs->f_flags = vfs_flags(mp);
-	strcpy(sfs->f_fstypename, "btrfs", 5);
+
 	/*
     st->f_iosize = mntp->attr.f_iosize;
     st->f_bavail = mntp->attr.f_bavail;
@@ -524,14 +388,57 @@ int btrfs_vfs_mount(struct mount *mp, vnode_t devvp, user_addr_t data, vfs_conte
     st->f_fsid = mntp->attr.f_fsid;
     st->f_owner = mntp->attr.f_owner;*/
 
+
+	strcpy(sfs->f_fstypename, "btrfs", 5);
+
+
+	btrfs_list *chunk_tree_bootstrap = NULL;
+
+	ret = get_chunk_tree_bootstrap(sb_rec, &chunk_tree_bootstrap);
+
+	if(!ret) {
+		DMESG_LOG("Failed to bootstrap chunk tree");
+		goto error_exit;
+	}
+
+//#error "don't forget to replace io_device with buf_meta_bread dev_vn, dummy"
+
+//	err = buf_meta_bread(vol->dev_vn, superblock_addrs[0]/BTRFS_SUPERBLOCK_SIZE, blocksize, cred, &primary_superblock);
+
+	uint8_t *chunk_tree_root = btrfs_read_root(vol->dev_vn, sb_rec->chunk_tree_addr, chunk_tree_bootstrap); // chunk root
+
+	if(!chunk_tree_root) {
+		DMESG_LOG("Failed to read chunk tree root");
+		goto error_exit;
+	}
+
+	ret = btrfs_read_chunk_tree(vol->dev_vn, chunk_tree_root, &chunk_tree_bootstrap);
+	
+	if(!ret) {
+		DMESG_LOG("failed to parse chunk tree");
+		goto error_exit;
+	}
+
+	uint8_t *root_tree_root = btrfs_read_root(vol->dev_vn, sb_rec->root_tree_addr, chunk_tree_bootstrap);
+	if(!root_tree_root) {
+		DMESG_LOG("failed to read root_tree_root");
+		goto error_exit;
+	}
+
+	uint8_t *fs_tree_root = read_fs_tree_root(vol->dev_vn, sb_rec, root_tree_root, chunk_tree_bootstrap);
+	if(!fs_tree_root) {
+		DMESG_LOG("Failed to read the fs tree root");
+		goto error_exit;
+	}
+
 error_exit:
-	if(vol && vol->ct_rec) free_chunk_tree(vol->ct_rec);
+	if(vol && vol->ct_rec) _FREE(vol->ct_rec, M_TEMP);
 	_FREE(vol, M_TEMP);
 	DMESG_LOG("btrfs_vfs_mount pre-mortem ret: %d", ret);
 
 	/// this is to force the plugin to ALWAYS return input/output error. We only change this when it works, otherwise we're asking for the kernel to break.
-	//ret = EIO;
-	//btrfs_vfs_unmount(mp, MNT_FORCE, context);
+	ret = EIO;
+	btrfs_vfs_unmount(mp, MNT_FORCE, context);
 	return ret;
 }
 
@@ -545,32 +452,6 @@ int btrfs_vfs_unmount(struct mount *mp, int mntflags, vfs_context_t context) {
 unload_exit:
 	OSKextReleaseKextWithLoadTag(OSKextGetCurrentLoadTag());
 	DMESG_LOG("unloaded btrfs_vfs_unmount()");
-	return 0;
-}
-
-// get root vnode of filesystem
-static int btrfs_vfs_root(struct mount *mp, struct vnode **vpp, vfs_context_t context) {
-	/// This results in an infinite loop, as no root is actually recovered.
-	errno_t err = EAGAIN; // Couldn't find root dir
-
-	vnode_t vn = NULL;
-	struct vnode_fsparam param;
-
-	kassert_nonnull(mp);
-    kassert_nonnull(vpp);
-    kassert_nonnull(context);
-
-	DMESG_LOG("btrfs_vfs_root was called\n");
-	btrfs_inmem_vol *vol = vfs_fsprivate(mp);
-	kauth_cred_t cred = vfs_context_ucred(context);
-	struct vnode *vp;
-
-error_exit:
-	return err;
-}
-
-// get information about this filesystem
-static int btrfs_vfs_getattr(struct mount *mp, struct vfs_attr *vpp, vfs_context_t context) {
 	return 0;
 }
 

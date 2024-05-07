@@ -3,3 +3,5 @@ bin/
 .vscode/
 *.o
 Info.plist~
+.DS_Store
+

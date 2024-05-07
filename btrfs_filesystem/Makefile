@@ -50,7 +50,7 @@ CODESIGN=	$(shell xcrun -find -sdk $(SDKROOT) codesign)
 # The __kext_makefile__ macro used to compatible with XCode
 # Since XCode use intermediate objects  which causes symbol duplicated
 #
-CPPFLAGS+=	-DKERNEL \
+CFLAGS+= -DKERNEL \
 		-DKERNEL_PRIVATE \
 		-DDRIVER_PRIVATE \
 		-DAPPLE \
@@ -63,14 +63,14 @@ CPPFLAGS+=	-DKERNEL \
 # Convenience defines
 # BUNDLEID macro will be used in KMOD_EXPLICIT_DECL
 #
-CPPFLAGS+=	-DKEXTNAME_S=\"$(KEXTNAME)\"		\
+CFLAGS+= -DKEXTNAME_S=\"$(KEXTNAME)\"		\
 		-DKEXTVERSION_S=\"$(KEXTVERSION)\"	\
 		-DKEXTBUILD_S=\"$(KEXTBUILD)\"		\
 		-DBUNDLEID_S=\"$(BUNDLEID)\"		\
 		-DBUNDLEID=$(BUNDLEID)
 
 TIME_STAMP:=	$(shell date +'%Y/%m/%d\ %H:%M:%S%z')
-CPPFLAGS+=	-D__TS__=\"$(TIME_STAMP)\"
+CFLAGS+=	-D__TS__=\"$(TIME_STAMP)\"
 
 #
 # C compiler flags
