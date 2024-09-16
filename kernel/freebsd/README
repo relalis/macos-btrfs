@@ -1,0 +1,2 @@
+Use bmake to compile
+MAKESYSPATH must point to </path/to/freebsd/directory>/usr/src/share/mk

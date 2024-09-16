@@ -1,7 +1,8 @@
-build/
-bin/
-.vscode/
-*.o
-Info.plist~
+.vscode
 .DS_Store
-
+*.o
+build/
+.depend*
+test.py
+export_syms
+.depend.*.o

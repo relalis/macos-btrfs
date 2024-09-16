@@ -1,6 +1,7 @@
-// btrfs_filesystem.h
+#ifndef _BTRFS_FILESYSTEM_H
+#define _BTRFS_FILESYSTEM_H
 
-/* btrfs_filesystem.h
+/*
  * Copied from WinBtrfs, all credits to maharmstone (https://github.com/maharmstone/btrfs)
  *
  * Generic btrfs header file. Thanks to whoever it was who wrote
@@ -8,12 +9,35 @@
  *
  * I release this file, and this file only, into the public domain - do whatever
  * you want with it. You don't have to, but I'd appreciate if you let me know if you
- * use it anything cool - mark@harmstone.com. */
+ * use it anything cool - mark@harmstone.com.
+ */
 
 #pragma once
 
-#include <stdint.h>
+#include <sys/types.h>
+#ifdef __APPLE__
 #include <libkern/libkern.h>
+#elif __FreeBSD__
+#include <sys/libkern.h>
+#endif
+
+#ifdef __linux__
+#include <stdint.h>
+#endif
+
+#ifndef __APPLE__
+#define FSUR_RECOGNIZED         (-1)
+#define FSUR_UNRECOGNIZED       (-2)
+#define FSUR_IO_SUCCESS         (-3)
+#define FSUR_IO_FAIL            (-4)
+#define FSUR_IO_UNCLEAN         (-5)
+#else
+#include <sys/loadable_fs.h>
+#endif
+
+#ifndef errno_t
+#define errno_t int
+#endif
 
 #define DMESG_LOG(fmt, ...) printf("[macos-BTRFS]: " fmt "\n", ##__VA_ARGS__);
 
@@ -268,7 +292,7 @@ typedef struct DEV_ITEM {
 #define BTRFS_NUM_BACKUP_ROOTS 4
 
 /*!
- @struct superblock_backup
+ @struct btrfs_superblock_backup
  @abstract Used to hold a backup of a superblock
  @field root_tree_addr
  @field root_tree_generation
@@ -319,10 +343,10 @@ typedef struct {
 	uint8_t dev_root_level;
 	uint8_t csum_root_level;
 	uint8_t reserved2[10];
-} superblock_backup;
+} btrfs_superblock_backup;
 
 /*!
- @struct superblock
+ @struct btrfs_superblock
  @abstract lists the main trees of the FS
  @field checksum Checksum of everything past this field (from 20 to 1000)
  @field uuid FS specific UUID, visible to user
@@ -360,8 +384,8 @@ typedef struct {
  @field sys_chunk_array Contains (KEY, CHUNK_ITEM) pairs for all SYSTEM chunks. This is needed to bootstrap the mapping from logical addresses to physical.
  @field backup Contain super_roots (4 btrfs_root_backup)
  @field reserved2 Reserved for future expansion
- @discussion The primary superblock is located at 0x1 0000 (6410 KiB). Mirror copies of the superblock are located at physical addresses 0x400 0000 (6410 MiB), 0x40 0000 0000 (25610 GiB), and 0x4 0000 0000 0000 (1 PiB), if these locations are valid. btrfs normally updates all superblocks, but in SSD mode it will update only one at a time. The superblock with the highest generation is used when reading.
- @note Btrfs only recognizes disks with a valid 0x1 0000 superblock; otherwise, there would be confusion with other filesystems.
+ @discussion The primary superblock is located at 0x1â€¯0000 (6410â€¯KiB). Mirror copies of the superblock are located at physical addresses 0x400â€¯0000 (6410â€¯MiB), 0x40â€¯0000â€¯0000 (25610â€¯GiB), and 0x4â€¯0000â€¯0000â€¯0000 (1â€¯PiB), if these locations are valid. btrfs normally updates all superblocks, but in SSD mode it will update only one at a time. The superblock with the highest generation is used when reading.
+ @note Btrfs only recognizes disks with a valid 0x1â€¯0000 superblock; otherwise, there would be confusion with other filesystems.
  @todo expand documentation.
  */
 typedef struct {
@@ -399,9 +423,9 @@ typedef struct {
 	btrfs_uuid metadata_uuid;
 	uint64_t reserved[28];
 	uint8_t sys_chunk_array[SYS_CHUNK_ARRAY_SIZE];
-	superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
+	btrfs_superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
 //	uint8_t reserved2[565];
-} __attribute__((__packed__, __aligned__(8))) superblock;
+} __attribute__((__packed__, __aligned__(8))) btrfs_superblock;
 
 /*!
  @struct DIR_ITEM
@@ -977,11 +1001,6 @@ typedef struct {
 	uint16_t length;
 } btrfs_send_tlv;
 
-/// this is wrong, it needs to use castagnoli crc32 (crc32c), not the standard crc32
-static inline uint64_t btrfs_name_hash(const char *name, int len) {
-	return crc32((uint32_t)~1, name, len);
-}
-
 #define kassert(ex)             (void) ((void) (ex))
 #define kassertf(ex, fmt, ...)  (void) ((void) (ex), ##__VA_ARGS__)
 #define kassert_null(ptr)       kassert(((void *) ptr) == NULL)
@@ -989,3 +1008,5 @@ static inline uint64_t btrfs_name_hash(const char *name, int len) {
 
 
 #pragma pack(pop)
+
+#endif //_BTRFS_FILESYSTEM_H
