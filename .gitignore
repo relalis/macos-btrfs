@@ -6,3 +6,11 @@ build/
 test.py
 export_syms
 .depend.*.o
+kernel/freebsd/btrfs.ko
+kernel/freebsd/i386
+kernel/freebsd/machine
+kernel/freebsd/vnode_if_newproto.h
+kernel/freebsd/opt_global.h
+kernel/freebsd/vnode_if_typedef.h
+kernel/freebsd/vnode_if.h
+kernel/freebsd/x86
