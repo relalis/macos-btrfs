@@ -297,9 +297,10 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         bmp->pm_root_addr = prim_sblock->root_tree_addr;
 
         // read sys_chunk_array to bootstrap the system chunk tree
+        RB_INIT(&bmp->pm_chunk_bootstrap);
         for(int i = 0; i < prim_sblock->sys_chunk_array_valid; i += (sizeof(btrfs_key) + sizeof(btrfs_chunk_item))) {
                 btrfs_key *fa_key = (btrfs_key *)&prim_sblock->sys_chunk_array[i];
-		btrfs_chunk_item *fa_chunk = (btrfs_chunk_item*)&prim_sblock->sys_chunk_array[i + sizeof(btrfs_key)];
+		btrfs_chunk_item *fa_chunk = (btrfs_chunk_item *)&prim_sblock->sys_chunk_array[i + sizeof(btrfs_key)];
 
                 // the chunk tree is essential. If we encounter an error, we'll
                 // simply exit in error.
@@ -307,21 +308,35 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
                         error = EINVAL;
                         goto error_exit;
                 }
-
                 // every chunk has a stripe. absence of a stripe is corrupt data.
                 if(fa_chunk->num_stripes == 0) {
                         error = EINVAL;
                         goto error_exit;
                 }
 
-//                struct btrfs_chunk_tree_keypair *new_chunkmap_node = malloc(sizeof(btrfs_chunk_tree_keypair));
-//                RB_INSERT(sys_chunk_map, bmp->pm_chunkmap, new_chunkmap_node);
+                struct b_chunk_bstrap *n_node = malloc(sizeof(struct b_chunk_bstrap), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
+                memcpy(n_node, &prim_sblock->sys_chunk_array[i], sizeof(btrfs_key) + sizeof(btrfs_chunk_item));
 
-                // chunk tree stripes define the backing device for the filesystem
-                // skipping for now
-                // @todo: implement chunk item stripe parsing
-                i += (sizeof(btrfs_chunk_item_stripe) * fa_chunk->num_stripes);
+                n_node->stripe_head = malloc(sizeof(struct chunk_stripe_list), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
+                LIST_INIT(n_node->stripe_head);
+                for(int j = 0; j < fa_chunk->num_stripes; ++j) {
+                        struct b_stripe_list *n_stripe = malloc(sizeof(struct b_stripe_list), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
+                        memcpy(&n_stripe->val, &prim_sblock->sys_chunk_array[i]
+                                        + (sizeof(btrfs_key) + sizeof(btrfs_chunk_item))
+                                        + (sizeof(btrfs_chunk_item_stripe) * j),
+                                sizeof(btrfs_chunk_item_stripe));
+                        LIST_INSERT_HEAD(n_node->stripe_head, n_stripe, entries);
+                        i += sizeof(btrfs_chunk_item_stripe);
+                }
+
+                RB_INSERT(sys_chunk_map, &bmp->pm_chunk_bootstrap, n_node);
         }
+
+        // in order for traversal:
+
+        // - Read the chunk tree root
+        // - Read the root tree root (requires chunk tree for logical->physical mapping)
+        // - Read the filesystem tree root (will be found under the root tree)
 
         // release the buffer
         brelse(bp);
