@@ -13,44 +13,16 @@
 
 // we're not implementing the RB tree structure correctly, but cleanup will come later
 // @todo: use generic RB trees rather than specific trees for key/chunk_item pairs in sys_chunk_array
-struct b_stripe_list {
-    btrfs_chunk_item_stripe val;
-    LIST_ENTRY(b_stripe_list) entries;
-};
-
-LIST_HEAD(chunk_stripe_list, b_stripe_list);
 
 struct b_chunk_bstrap {
-    btrfs_key key;
-    btrfs_chunk_item chunk_item;
-    struct chunk_stripe_list *stripe_head;
-    RB_ENTRY(b_chunk_bstrap) bt_entry;
+    struct btrfs_key key;
+    struct btrfs_chunk_item chunk_item;
+    // only reading one stripe- no RAID for this implementation (for now)
+    struct btrfs_chunk_item_stripe stripe;
+    LIST_ENTRY(b_chunk_bstrap) entries;
 };
 
-//@todo: this is a dirty chunk comparison and I don't trust that it actually works.
-
-static int chunk_cmp(struct b_chunk_bstrap *key_1, struct b_chunk_bstrap *key_2) {
-        if ((key_1->key.offset > key_2->key.offset && key_1->key.offset < (key_2->key.offset + key_2->chunk_item.size)) ||
-        ((key_1->key.offset + key_1->chunk_item.size) > key_2->key.offset &&
-         (key_1->key.offset + key_1->chunk_item.size) < (key_2->key.offset + key_2->chunk_item.size))) {
-        return 0;  // overlapping ranges
-    }
-
-    // key_1 is completely before key_2
-    if (key_1->key.offset + key_1->chunk_item.size <= key_2->key.offset) {
-        return -1;
-    }
-
-    // key_1 is completely after key_2
-    if (key_1->key.offset >= key_2->key.offset + key_2->chunk_item.size) {
-        return 1;
-    }
-
-    return 0;
-}
-
-RB_HEAD(sys_chunk_map, b_chunk_bstrap);
-RB_GENERATE_STATIC(sys_chunk_map, b_chunk_bstrap, bt_entry, chunk_cmp); // comparing chunk key overlapping
+LIST_HEAD(sys_chunk_bootstrap, b_chunk_bstrap) chunk_bootstrap_list;
 
 struct btrfsmount_internal {
     struct mount *pm_mountp;                    // vfs mount struct
@@ -63,13 +35,13 @@ struct btrfsmount_internal {
     struct vnode *pm_devvp;                     // vnode for character device we're mounting
     struct vnode *pm_odevvp;                    // msdosfs refers to this as the "real devfs vnode"
                                                 // I have yet to understand why, or its purpose
+    struct cdev *pm_dev;                        // character device we're mounting
 
     struct lock pm_btrfslock;                   // protects allocations
     struct lock pm_checkpath_lock;              // protects checkpath result
-    uint32_t pm_sector_size;                    // BTRFS sector size
-    uint64_t pm_superblock_physical_addr;       // store superblock addr in case we're using a backup sblock
-    uint64_t pm_root_addr;                      // logical address of root tree root
-    struct sys_chunk_map pm_chunk_bootstrap;
+    struct btrfs_superblock pm_superblock;             // superblock struct
+
+    struct sys_chunk_bootstrap *pm_chunk_bootstrap;
 };
 
 struct btrfs_args {

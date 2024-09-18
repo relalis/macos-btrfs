@@ -183,11 +183,11 @@ typedef struct BTRFS_UUID {
 	uint8_t uuid[16];
 } btrfs_uuid;
 
-typedef struct KEY {
+struct btrfs_key {
 	uint64_t obj_id;
 	uint8_t obj_type;
 	uint64_t offset;
-} btrfs_key;
+};
 
 #define HEADER_FLAG_WRITTEN         0x000000000000001
 #define HEADER_FLAG_SHARED_BACKREF  0x000000000000002
@@ -231,7 +231,7 @@ typedef struct {
  Size field of struct btrfs_item indicates how much data is stored.
  */
 typedef struct {
-	btrfs_key key;
+	struct btrfs_key key;
 	uint32_t offset;
 	uint32_t size;
 } btrfs_leaf_node;
@@ -246,7 +246,7 @@ typedef struct {
  @discussion all non-leaf blocks are nodes, they hold only keys and pointers to other blocks
  */
 typedef struct {
-	btrfs_key key;
+	struct btrfs_key key;
 	uint64_t address;
 	uint64_t generation;
 } btrfs_internal_node;
@@ -271,7 +271,7 @@ typedef struct {
  @field fs_uuid uuid of FS that owns this device
  @discussion `dev_id` matches the dev_id in the filesystem's list of struct btrfs_devices.
  */
-typedef struct DEV_ITEM {
+struct btrfs_dev_item {
 	uint64_t dev_id;
 	uint64_t num_bytes;
 	uint64_t bytes_used;
@@ -286,7 +286,7 @@ typedef struct DEV_ITEM {
 	uint8_t bandwidth;
 	btrfs_uuid device_uuid;
 	btrfs_uuid fs_uuid;
-} btrfs_dev_item;
+};
 
 #define SYS_CHUNK_ARRAY_SIZE 0x800
 #define BTRFS_NUM_BACKUP_ROOTS 4
@@ -319,7 +319,7 @@ typedef struct DEV_ITEM {
  @field reserved2 Reserved for future expansion, and as an alignment
  @todo complete documentation
  */
-typedef struct {
+struct btrfs_superblock_backup {
 	uint64_t root_tree_addr;
 	uint64_t root_tree_generation;
 	uint64_t chunk_tree_addr;
@@ -343,7 +343,7 @@ typedef struct {
 	uint8_t dev_root_level;
 	uint8_t csum_root_level;
 	uint8_t reserved2[10];
-} btrfs_superblock_backup;
+};
 
 /*!
  @struct btrfs_superblock
@@ -388,7 +388,7 @@ typedef struct {
  @note Btrfs only recognizes disks with a valid 0x1â€¯0000 superblock; otherwise, there would be confusion with other filesystems.
  @todo expand documentation.
  */
-typedef struct {
+struct btrfs_superblock {
 	uint8_t checksum[BTRFS_CSUM_SIZE];
 	btrfs_uuid uuid;
 	uint64_t sb_phys_addr;
@@ -416,16 +416,16 @@ typedef struct {
 	uint8_t root_level;
 	uint8_t chunk_root_level;
 	uint8_t log_root_level;
-	btrfs_dev_item dev_item;
+	struct btrfs_dev_item dev_item;
 	char label[MAX_LABEL_SIZE];
 	uint64_t cache_generation;
 	uint64_t uuid_tree_generation;
 	btrfs_uuid metadata_uuid;
 	uint64_t reserved[28];
 	uint8_t sys_chunk_array[SYS_CHUNK_ARRAY_SIZE];
-	btrfs_superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
+	struct btrfs_superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
 //	uint8_t reserved2[565];
-} __attribute__((__packed__, __aligned__(8))) btrfs_superblock;
+} __attribute__((__packed__, __aligned__(8)));
 
 /*!
  @struct DIR_ITEM
@@ -450,7 +450,7 @@ typedef struct {
  @todo expand documentation. WinBtrfs adds `name`, which is missing from the linux kernel header; possibly a struct packing method.
  */
 typedef struct DIR_ITEM {
-	btrfs_key key;
+	struct btrfs_key key;
 	uint64_t transid;
 	uint16_t extended_attribute_len;
 	uint16_t name_length;
@@ -548,7 +548,7 @@ typedef struct ROOT_ITEM {
 	uint64_t last_snapshot_generation;
 	uint64_t flags;
 	uint32_t num_references;
-	btrfs_key drop_progress;
+	struct btrfs_key drop_progress;
 	uint8_t drop_level;
 	uint8_t root_level;
 	uint64_t generation2;
@@ -585,7 +585,7 @@ typedef struct ROOT_ITEM {
 
 /// @todo Linux kernel header adds a `struct stripe` at the end of this structure, to store additional stripes in the item chunk.
 
-typedef struct CHUNK_ITEM {
+struct btrfs_chunk_item {
 	uint64_t size;
 	uint64_t root_id;
 	uint64_t stripe_length;
@@ -595,7 +595,7 @@ typedef struct CHUNK_ITEM {
 	uint32_t sector_size;
 	uint16_t num_stripes;
 	uint16_t sub_stripes;
-} btrfs_chunk_item;
+};
 
 /*!
  @struct btrfs_chunk_item_stripe
@@ -604,11 +604,11 @@ typedef struct CHUNK_ITEM {
  @field offset Location of the start of the stripe, in bytes. Size is determined by the stripe_len field in struct btrfs_chunk.
  @field dev_uuid UUID of the device that contains this stripe. Used to confirm that the correct device has been retrieved.
  */
-typedef struct CHUNK_ITEM_STRIPE {
+struct btrfs_chunk_item_stripe {
 	uint64_t dev_id;
 	uint64_t offset;
 	btrfs_uuid dev_uuid;
-} btrfs_chunk_item_stripe;
+};
 
 /*!
  @struct EXTENT_DATA
@@ -687,7 +687,7 @@ typedef struct {
  @field level
  */
 typedef struct {
-	btrfs_key firstitem;
+	struct btrfs_key firstitem;
 	uint8_t level;
 } EXTENT_ITEM2;
 
@@ -701,7 +701,7 @@ typedef struct {
 
 typedef struct {
 	EXTENT_ITEM extent_item;
-	btrfs_key firstitem;
+	struct btrfs_key firstitem;
 	uint8_t level;
 } EXTENT_ITEM_TREE;
 
@@ -799,7 +799,7 @@ typedef struct {
  @field num_bitmaps
  */
 typedef struct {
-	btrfs_key key;
+	struct btrfs_key key;
 	uint64_t generation;
 	uint64_t num_entries;
 	uint64_t num_bitmaps;

@@ -14,3 +14,4 @@ kernel/freebsd/opt_global.h
 kernel/freebsd/vnode_if_typedef.h
 kernel/freebsd/vnode_if.h
 kernel/freebsd/x86
+scratch_notes.txt

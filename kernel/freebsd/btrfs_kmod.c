@@ -213,7 +213,7 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         struct buf *bp;
         struct cdev *dev;
 	struct vnode *devvp;
-        btrfs_superblock *prim_sblock;
+        struct btrfs_superblock *prim_sblock;
         struct bufobj *buf_obj;
 
         int ronly, error;
@@ -259,7 +259,7 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         if(error)
                 goto error_exit; // fun times
         bp->b_flags |= B_AGE;
-        prim_sblock = (btrfs_superblock *)bp->b_data;
+        prim_sblock = (struct btrfs_superblock *)bp->b_data;
         if(prim_sblock->magic != BTRFS_MAGIC) {
                 error = EINVAL;
                 goto error_exit;
@@ -283,25 +283,16 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         bmp->pm_mask = bmp->pm_dirmask = S_IXUSR | S_IXGRP | S_IXOTH |
 	    S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR;
 
-        // @todo: should we copy the entire superblock to memory, or do we just need
-        // some references?
-        // the sector size is certainly important for future block reads, but the 
-        // btrfs superblock has a chunk tree array that we don't really need beyond
-        // bootstrapping (afaik) if we're gonna write.
-        // on the other hand, holding on to that array could be useful if we misread
-        // something, or if there's data corruption. We'll cross that bridge when
-        // we get to it.
+        // store superblock in the in-memory structure
+        bmp->pm_superblock = *prim_sblock;
 
-        bmp->pm_sector_size = prim_sblock->sector_size;
-        bmp->pm_superblock_physical_addr = prim_sblock->sb_phys_addr;
-        bmp->pm_root_addr = prim_sblock->root_tree_addr;
+        LIST_INIT(&chunk_bootstrap_list);
+        bmp->pm_chunk_bootstrap = &chunk_bootstrap_list;
 
-        // read sys_chunk_array to bootstrap the system chunk tree
-        RB_INIT(&bmp->pm_chunk_bootstrap);
-        for(int i = 0; i < prim_sblock->sys_chunk_array_valid; i += (sizeof(btrfs_key) + sizeof(btrfs_chunk_item))) {
-                btrfs_key *fa_key = (btrfs_key *)&prim_sblock->sys_chunk_array[i];
-		btrfs_chunk_item *fa_chunk = (btrfs_chunk_item *)&prim_sblock->sys_chunk_array[i + sizeof(btrfs_key)];
-
+        for(int i = 0; i < bmp->pm_superblock.sys_chunk_array_valid; i += (sizeof(struct btrfs_key) + sizeof(struct btrfs_chunk_item))) {
+                struct btrfs_key *fa_key = (struct btrfs_key *) &prim_sblock->sys_chunk_array[i];
+		struct btrfs_chunk_item *fa_chunk = (struct btrfs_chunk_item *) &prim_sblock->sys_chunk_array[i + sizeof(struct btrfs_key)];
+                struct btrfs_chunk_item_stripe *fa_stripe = (struct btrfs_chunk_item_stripe *) &prim_sblock->sys_chunk_array[i + sizeof(struct btrfs_key) + sizeof(struct btrfs_chunk_item)];
                 // the chunk tree is essential. If we encounter an error, we'll
                 // simply exit in error.
                 if(fa_key->obj_type != TYPE_CHUNK_ITEM) {
@@ -312,24 +303,18 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
                 if(fa_chunk->num_stripes == 0) {
                         error = EINVAL;
                         goto error_exit;
+                } else if(fa_chunk->num_stripes > 1) {
+                        uprintf("[BTRFS] Found %d stripes, but we're only processing 1\n", fa_chunk->num_stripes);
                 }
 
                 struct b_chunk_bstrap *n_node = malloc(sizeof(struct b_chunk_bstrap), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
-                memcpy(n_node, &prim_sblock->sys_chunk_array[i], sizeof(btrfs_key) + sizeof(btrfs_chunk_item));
+                n_node->key = *fa_key;
+                n_node->chunk_item = *fa_chunk;
+                n_node->stripe = *fa_stripe;
 
-                n_node->stripe_head = malloc(sizeof(struct chunk_stripe_list), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
-                LIST_INIT(n_node->stripe_head);
-                for(int j = 0; j < fa_chunk->num_stripes; ++j) {
-                        struct b_stripe_list *n_stripe = malloc(sizeof(struct b_stripe_list), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
-                        memcpy(&n_stripe->val, &prim_sblock->sys_chunk_array[i]
-                                        + (sizeof(btrfs_key) + sizeof(btrfs_chunk_item))
-                                        + (sizeof(btrfs_chunk_item_stripe) * j),
-                                sizeof(btrfs_chunk_item_stripe));
-                        LIST_INSERT_HEAD(n_node->stripe_head, n_stripe, entries);
-                        i += sizeof(btrfs_chunk_item_stripe);
-                }
+                LIST_INSERT_HEAD(&chunk_bootstrap_list, n_node, entries);
 
-                RB_INSERT(sys_chunk_map, &bmp->pm_chunk_bootstrap, n_node);
+                i += (sizeof(struct btrfs_chunk_item_stripe) * fa_chunk->num_stripes);
         }
 
         // in order for traversal:
@@ -338,11 +323,20 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         // - Read the root tree root (requires chunk tree for logical->physical mapping)
         // - Read the filesystem tree root (will be found under the root tree)
 
+        // assign our internal structure to mp
+        bmp->pm_devvp = devvp;
+        bmp->pm_odevvp = odevvp;
+        bmp->pm_dev = dev;
+
+        mp->mnt_data = bmp;
+
+        return(0);
+
+error_exit:
         // release the buffer
         brelse(bp);
         bp = NULL;
 
-error_exit:
         if(bp != NULL)
                 brelse(bp);
         if(cp != NULL) {
@@ -353,7 +347,15 @@ error_exit:
         if(bmp != NULL) {
                 lockdestroy(&bmp->pm_btrfslock);
                 lockdestroy(&bmp->pm_checkpath_lock);
-                //free(bmp->)
+                if(bmp->pm_chunk_bootstrap != NULL) {
+                        struct b_chunk_bstrap *clr_np;
+                        while(!LIST_EMPTY(&chunk_bootstrap_list)) {
+                                clr_np = LIST_FIRST(&chunk_bootstrap_list);
+                                LIST_REMOVE(clr_np, entries);
+                                free(clr_np, M_BTRFSMOUNT);
+                        }
+                        bmp->pm_chunk_bootstrap = NULL;
+                }
                 mp->mnt_data = NULL;
         }
         BO_LOCK(&odevvp->v_bufobj);
