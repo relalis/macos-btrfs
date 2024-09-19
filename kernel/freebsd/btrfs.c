@@ -1,9 +1,11 @@
-#include "btrfs.h"
+#include <sys/systm.h>
+#include <sys/mount.h>
+#include <sys/queue.h>
+#include "btrfs_mount.h"
+#include "btrfs_tree.h"
 
-static int btrfs_comp_keys_by_type(const struct btrfs_key *k1, const struct btrfs_key *k2) {
-    if((k1->obj_id > k2->obj_id) || (k1->obj_type > k2->obj_type) || (k1->offset > k2->offset))
-        return 1;
-    if((k1->obj_id < k2->obj_id) || (k1->obj_type < k2->obj_type) || (k1->offset < k2->offset))
-        return -1;
-    return 0;
+// @todo: key comparison for rb tree
+int btrfs_find_key(struct btrfsmount_internal *bmp, struct btrfs_key *in_key, struct btrfs_key *out_key) {
+
+    return(0);
 }

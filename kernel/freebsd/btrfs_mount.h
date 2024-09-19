@@ -2,9 +2,10 @@
 #define _BTRFS_MOUNT_H
 
 #include <sys/types.h>
-#include <sys/queue.h>
-#include <sys/tree.h>
 #include <sys/lock.h>
+#include <sys/lockmgr.h>
+#include <sys/tree.h>
+#include <sys/queue.h>
 #include "btrfs.h"
 
 // BTRFS in Linux is represented (effectively) in a red-black tree
@@ -14,15 +15,13 @@
 // we're not implementing the RB tree structure correctly, but cleanup will come later
 // @todo: use generic RB trees rather than specific trees for key/chunk_item pairs in sys_chunk_array
 
-struct b_chunk_bstrap {
+struct b_backing_dev {
     struct btrfs_key key;
     struct btrfs_chunk_item chunk_item;
     // only reading one stripe- no RAID for this implementation (for now)
     struct btrfs_chunk_item_stripe stripe;
-    LIST_ENTRY(b_chunk_bstrap) entries;
+    LIST_ENTRY(b_backing_dev) entries;
 };
-
-LIST_HEAD(sys_chunk_bootstrap, b_chunk_bstrap) chunk_bootstrap_list;
 
 struct btrfsmount_internal {
     struct mount *pm_mountp;                    // vfs mount struct
@@ -37,11 +36,11 @@ struct btrfsmount_internal {
                                                 // I have yet to understand why, or its purpose
     struct cdev *pm_dev;                        // character device we're mounting
 
-    struct lock pm_btrfslock;                   // protects allocations
-    struct lock pm_checkpath_lock;              // protects checkpath result
     struct btrfs_superblock pm_superblock;             // superblock struct
 
-    struct sys_chunk_bootstrap *pm_chunk_bootstrap;
+    LIST_HEAD(btrfs_sys_chunks, b_backing_dev) pm_backing_dev_bootstrap;
+
+    struct lock pm_btrfslock;                   // protects allocations
 };
 
 struct btrfs_args {
@@ -54,4 +53,9 @@ struct btrfs_args {
     int flags;
 };
 
+#define VFSTOBTRFS(mp) ((struct btrfsmount_internal *)mp->mnt_data)
+#define BTRFSLOGICALTOPHYSICAL(key, stripe, logical_addr) \
+    (((struct btrfs_chunk_item_stripe *)stripe)->offset + \
+    (logical_addr - ((struct btrfs_key *)key)->offset))
+    
 #endif // _BTRFS_MOUNT_H

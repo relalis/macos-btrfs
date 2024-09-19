@@ -358,21 +358,21 @@ struct btrfs_superblock_backup {
  @field chunk_tree_addr logical address of the chunk tree root
  @field log_tree_addr  logical address of the log tree root
  @field log_root_transid  will help find the new super based on the log root
- @field total_bytes
- @field bytes_used
- @field root_dir_objectid
+ @field total_bytes size of the filesystem in bytes
+ @field bytes_used used space in filesystem
+ @field root_dir_objectid the object id of the root directory, to be matched with btrfs_key objectid
  @field num_devices
- @field sector_size
- @field node_size
- @field leaf_size
- @field stripe_size
+ @field sector_size size of each sector
+ @field node_size 
+ @field leaf_size deprecated
+ @field stripe_size size of stripes
  @field sys_chunk_array_size
  @field chunk_root_generation
  @field compat_flags
  @field compat_ro_flags only implementations that support the flags can write to the filesystem
  @field incompat_flags only implementations that support the flags can use the filesystem
  @field csum_type Btrfs currently uses the CRC32c little-endian hash function with seed -1
- @field root_level
+ @field root_level 
  @field chunk_root_level
  @field log_root_level
  @field dev_item DEV_ITEM data for this device
@@ -538,7 +538,7 @@ typedef struct INODE_ITEM {
  @field reserved For future expansion
  @discussion This structure holds defines the the root of a btree. It is associated with the ROOT_ITEM type. This structure is never used outside of this item.
  */
-typedef struct ROOT_ITEM {
+struct btrfs_root_item {
 	btrfs_inode_item inode;
 	uint64_t generation;
 	uint64_t objid;
@@ -564,7 +564,7 @@ typedef struct ROOT_ITEM {
 	btrfs_timespec stime;
 	btrfs_timespec rtime;
 	uint64_t reserved[8];
-} btrfs_root_item;
+};
 
 /*!
  @struct CHUNK_ITEM

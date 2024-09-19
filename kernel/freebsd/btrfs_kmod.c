@@ -67,11 +67,12 @@
 #include <geom/geom_vfs.h>
 
 #include "btrfs_mount.h"
+#include "btrfs_tree.h"
 
 static const char btrfs_lock_msg[] = "btrfslk";
 
 static const char *btrfs_mount_opts[] = {
-        "ro", "uid", "gid", NULL
+        "ro", "uid", "gid", "from", NULL
 };
 
 static MALLOC_DEFINE(M_BTRFSMOUNT, "btrfs", "btrfs filesystem");
@@ -117,7 +118,7 @@ static int btrfs_cmount(struct mntarg *mnt_args, void *data, uint64_t flags) {
 
         if(error)
                 return(error);
-        
+
         mnt_args = mount_argsu(mnt_args, "from", args.fspec, MAXPATHLEN);
         mnt_args = mount_arg(mnt_args, "export", &args.export, sizeof(args.export));
         mnt_args = mount_argf(mnt_args, "uid", "%d", args.uid);
@@ -130,9 +131,7 @@ static int btrfs_cmount(struct mntarg *mnt_args, void *data, uint64_t flags) {
         return (error);
 }
 
-/// @brief called by the kernel when filesystem mount inits
-/// @param mp 
-/// @return 
+// called by the kernel when filesystem mount inits
 static int btrfs_mount(struct mount *mp) {
         struct vnode *devvp;
         struct thread *td;
@@ -255,7 +254,10 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
                 READ SUPERBLOCK
                 CHECK MAGIC
         */
-        error = bread(devvp, superblock_addrs[0] / BTRFS_SUPERBLOCK_SIZE, BTRFS_SUPERBLOCK_SIZE, NOCRED, &bp);
+       // 
+       // https://lists.freebsd.org/pipermail/freebsd-fs/2010-March/008011.html
+       // 
+        error = bread(devvp, (superblock_addrs[0] / BTRFS_SUPERBLOCK_SIZE) * 8, BTRFS_SUPERBLOCK_SIZE, NOCRED, &bp);
         if(error)
                 goto error_exit; // fun times
         bp->b_flags |= B_AGE;
@@ -271,7 +273,6 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         bmp->pm_bo = buf_obj;
 
         lockinit(&bmp->pm_btrfslock, 0, btrfs_lock_msg, 0, 0);
-        lockinit(&bmp->pm_checkpath_lock, 0, "btrfs_chkpath", 0, 0);
 
         // TASK_INIT for rw->ro
 
@@ -286,8 +287,7 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         // store superblock in the in-memory structure
         bmp->pm_superblock = *prim_sblock;
 
-        LIST_INIT(&chunk_bootstrap_list);
-        bmp->pm_chunk_bootstrap = &chunk_bootstrap_list;
+        LIST_INIT(&bmp->pm_backing_dev_bootstrap);
 
         for(int i = 0; i < bmp->pm_superblock.sys_chunk_array_valid; i += (sizeof(struct btrfs_key) + sizeof(struct btrfs_chunk_item))) {
                 struct btrfs_key *fa_key = (struct btrfs_key *) &prim_sblock->sys_chunk_array[i];
@@ -307,13 +307,14 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
                         uprintf("[BTRFS] Found %d stripes, but we're only processing 1\n", fa_chunk->num_stripes);
                 }
 
-                struct b_chunk_bstrap *n_node = malloc(sizeof(struct b_chunk_bstrap), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
+                struct b_backing_dev *n_node = malloc(sizeof(struct b_backing_dev), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
                 n_node->key = *fa_key;
                 n_node->chunk_item = *fa_chunk;
                 n_node->stripe = *fa_stripe;
 
-                LIST_INSERT_HEAD(&chunk_bootstrap_list, n_node, entries);
+                LIST_INSERT_HEAD(&bmp->pm_backing_dev_bootstrap, n_node, entries);
 
+                // we continue the traversal and skip the stripes appended at the end of each element
                 i += (sizeof(struct btrfs_chunk_item_stripe) * fa_chunk->num_stripes);
         }
 
@@ -346,15 +347,14 @@ error_exit:
         }
         if(bmp != NULL) {
                 lockdestroy(&bmp->pm_btrfslock);
-                lockdestroy(&bmp->pm_checkpath_lock);
-                if(bmp->pm_chunk_bootstrap != NULL) {
-                        struct b_chunk_bstrap *clr_np;
-                        while(!LIST_EMPTY(&chunk_bootstrap_list)) {
-                                clr_np = LIST_FIRST(&chunk_bootstrap_list);
+                if(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
+                        struct b_backing_dev *clr_np;
+                        while(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
+                                clr_np = LIST_FIRST(&bmp->pm_backing_dev_bootstrap);
                                 LIST_REMOVE(clr_np, entries);
                                 free(clr_np, M_BTRFSMOUNT);
+                                clr_np = NULL;
                         }
-                        bmp->pm_chunk_bootstrap = NULL;
                 }
                 mp->mnt_data = NULL;
         }
@@ -369,86 +369,51 @@ error_exit:
 }
 
 static int btrfs_unmount(struct mount *mp, int mntflags) {
-        int error = 0;
+        int error;
+        struct btrfsmount_internal *bmp;
 
+        error = 0;
+        bmp = VFSTOBTRFS(mp);
+
+        vn_lock(bmp->pm_devvp, LK_EXCLUSIVE | LK_RETRY);
+        g_topology_lock();
+        g_vfs_close(bmp->pm_cp);
+        g_topology_unlock();
+        BO_LOCK(&bmp->pm_odevvp->v_bufobj);
+        bmp->pm_odevvp->v_bufobj.bo_flag &= ~BO_NOBUFS;
+        BO_UNLOCK(&bmp->pm_odevvp->v_bufobj);
+        atomic_store_rel_ptr((uintptr_t *)&bmp->pm_dev->si_mountpt, 0);
+        mntfs_freevp(bmp->pm_devvp);
+        vrele(bmp->pm_odevvp);
+        dev_rel(bmp->pm_dev);
+
+        // crashes here
+        lockdestroy(&bmp->pm_btrfslock);
+        free(bmp, M_BTRFSMOUNT);
+        mp->mnt_data = NULL;
         return(error);
 }
 
-// THIS IS NOT SUPPOSED TO BE HERE
-// I'm just keeping this so I can build in peace
-// @todo remove this
-static int event_handler(struct module *module, int event, void *arg) {
-
-        int e = 0; /* Error, 0 for normal return status */
-
-        switch (event) {
-
-        case MOD_LOAD:
-
-                uprintf("BTRFS Filesystem module loaded\n");
-
-                break;
-
-        case MOD_UNLOAD:
-
-                uprintf("BTRFS Filesystem module unloaded\n");
-
-                break;
-
-        default:
-
-                e = EOPNOTSUPP; /* Error, Operation Not Supported */
-
-                break;
-
-        }
-
-
-        return(e);
-
+static int btrfs_root(struct mount *mp, int flags, struct vnode **vpp) {
+        struct btrfsmount_internal *bmp = VFSTOBTRFS(mp);
+        return(bmp->pm_superblock.leaf_size);
 }
 
-/* The second argument of DECLARE_MODULE. */
+static int btrfs_statfs(struct mount *mp, struct statfs *sbp) {
+        return(0);
+}
 
-static moduledata_t btrfs_mod_conf = {
+static int btrfs_fhtovp(struct mount *mp, struct fid *fhp, int flags, struct vnode **vpp) {
+        return(0);
+}
 
-    "btrfs",    /* module name */
-
-     event_handler,  /* event handler */
-
-     NULL            /* extra data */
-
+static struct vfsops btrfs_vfsops = {
+	.vfs_fhtovp =		btrfs_fhtovp,
+	.vfs_mount =		btrfs_mount,
+	//.vfs_cmount =		btrfs_cmount,
+	.vfs_root =		btrfs_root,
+	.vfs_statfs =		btrfs_statfs,
+	.vfs_unmount =		btrfs_unmount,
 };
 
-/*
-        - init sequence:
-
-        btrfs_props_init
-        btrfs_init_sysfs
-        btrfs_init_compress
-        btrfs_init_cachep
-        btrfs_transaction_init
-        btrfs_ctree_init
-        btrfs_free_space_init
-        extent_state_init_cachep
-        extent_buffer_init_cachep
-        btrfs_bioset_init
-        extent_map_init
-        ordered_data_init
-        btrfs_delayed_inode_init
-        btrfs_auto_defrag_init
-        btrfs_delayed_ref_init
-        btrfs_prelim_ref_init
-        btrfs_interface_init
-        btrfs_print_mod_info
-        btrfs_run_sanity_tests
-        register_btrfs
-*/
-
-static int init_btrfs_fs(void) {
-        int ret = 0;
-
-        return ret;
-}
-
-DECLARE_MODULE(btrfs_fsm, btrfs_mod_conf, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
+VFS_SET(btrfs_vfsops, btrfs, VFCF_READONLY );

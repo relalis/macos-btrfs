@@ -18,7 +18,7 @@ uint64_t btrfs_get_crc32_checksum(uint8_t *buffer, int len) {
     return crc;
 }
 
-errno_t btrfs_get_volume_superblock_record(int mount_dev_fd, btrfs_superblock *result_superblock) {
+errno_t btrfs_get_volume_superblock_record(int mount_dev_fd, struct btrfs_superblock *result_superblock) {
 	/// @todo: there can be more superblocks, implement them later
 	/// @todo: add a check for device length
 

@@ -1,5 +1,5 @@
 KMOD				= btrfs
-SRCS				= vnode_if.h btrfs_kmod.c btrfs.c
+SRCS				= vnode_if.h btrfs.c btrfs_kmod.c
 MACHINE_ARCH		= amd64
 MACHINE				= amd64
 LDFLAGS				= -m elf_x86_64
