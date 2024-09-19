@@ -331,13 +331,11 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
 
         mp->mnt_data = bmp;
 
+        brelse(bp);
+        bp = NULL;
         return(0);
 
 error_exit:
-        // release the buffer
-        brelse(bp);
-        bp = NULL;
-
         if(bp != NULL)
                 brelse(bp);
         if(cp != NULL) {
@@ -387,7 +385,16 @@ static int btrfs_unmount(struct mount *mp, int mntflags) {
         vrele(bmp->pm_odevvp);
         dev_rel(bmp->pm_dev);
 
-        // crashes here
+        if(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
+                        struct b_backing_dev *clr_np;
+                        while(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
+                                clr_np = LIST_FIRST(&bmp->pm_backing_dev_bootstrap);
+                                LIST_REMOVE(clr_np, entries);
+                                free(clr_np, M_BTRFSMOUNT);
+                                clr_np = NULL;
+                        }
+        }
+
         lockdestroy(&bmp->pm_btrfslock);
         free(bmp, M_BTRFSMOUNT);
         mp->mnt_data = NULL;
