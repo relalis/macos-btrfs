@@ -6,21 +6,36 @@
 #include <sys/lockmgr.h>
 #include <sys/tree.h>
 #include <sys/queue.h>
-#include "btrfs.h"
+#include "btrfs_filesystem.h"
 
-// BTRFS in Linux is represented (effectively) in a red-black tree
-// this is not actually necessary for this implementation (any binary search tree
-// would work) but for the sake of exercise, we'll simply use RB trees.
+// BTRFS in Linux is represented in a red-black tree
+// @todo: use generic RB trees rather than lists for key/chunk_item pairs in sys_chunk_array
 
-// we're not implementing the RB tree structure correctly, but cleanup will come later
-// @todo: use generic RB trees rather than specific trees for key/chunk_item pairs in sys_chunk_array
-
-struct b_backing_dev {
+struct b_chunk_list {
     struct btrfs_key key;
     struct btrfs_chunk_item chunk_item;
     // only reading one stripe- no RAID for this implementation (for now)
-    struct btrfs_chunk_item_stripe stripe;
-    LIST_ENTRY(b_backing_dev) entries;
+    struct btrfs_chunk_item_stripe chunk_stripe;
+    LIST_ENTRY(b_chunk_list) entries;
+};
+
+// Linux kernel has a helpful struct (btrfs/fs.h) that holds pointers to all the roots
+// we will encounter. Seems like a good idea to me.
+struct btrfs_fs_info {
+    struct btrfs_root *tree_root;
+    struct btrfs_root *chunk_root;
+    struct btrfs_root *fs_root;
+    struct btrfs_root *extent_root;
+};
+
+// RB root item
+//@todo: implement btrfs_root struct methods to hold RB roots
+struct btrfs_root {
+    RB_ENTRY(btrfs_root) rb_node;
+
+    struct btrfs_root_item root_item;
+    struct btrfs_key root_key;
+    struct btrfs_fs_info *fs_info;
 };
 
 struct btrfsmount_internal {
@@ -36,9 +51,11 @@ struct btrfsmount_internal {
                                                 // I have yet to understand why, or its purpose
     struct cdev *pm_dev;                        // character device we're mounting
 
-    struct btrfs_superblock pm_superblock;             // superblock struct
+    struct btrfs_superblock pm_superblock;      // superblock struct
+    struct btrfs_fs_info pm_fsinfo;            // stores information on various rb roots
 
-    LIST_HEAD(btrfs_sys_chunks, b_backing_dev) pm_backing_dev_bootstrap;
+
+    LIST_HEAD(btrfs_sys_chunks, b_chunk_list) pm_backing_dev_bootstrap;
 
     struct lock pm_btrfslock;                   // protects allocations
 };
@@ -57,5 +74,5 @@ struct btrfs_args {
 #define BTRFSLOGICALTOPHYSICAL(key, stripe, logical_addr) \
     (((struct btrfs_chunk_item_stripe *)stripe)->offset + \
     (logical_addr - ((struct btrfs_key *)key)->offset))
-    
+
 #endif // _BTRFS_MOUNT_H

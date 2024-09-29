@@ -3,15 +3,16 @@ SRCS				= vnode_if.h btrfs.c btrfs_kmod.c
 MACHINE_ARCH		= amd64
 MACHINE				= amd64
 LDFLAGS				= -m elf_x86_64
-CFLAGS				= --target=x86_64-freebsd -I../../btrfs/include
+CFLAGS				= --target=x86_64-freebsd -I../include
 CC					= clang
-LD					= ld.lld
 
 .if ${.MAKE.OS} == "Darwin"
+LD					= ld.lld
 OBJCOPY				= llvm-objcopy
 .elif ${.MAKE.OS} == "Linux"
-# necessary because `xargs` on Linux doesn't support '-J', which is a FreeBSD extension
+# `xargs` on Linux doesn't support '-J' (a FreeBSD extension), which results in error
 EXPORT_SYMS			= YES
+LD					= ld.lld-14
 OBJCOPY				= llvm-objcopy-14
 .endif
 

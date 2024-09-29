@@ -449,13 +449,13 @@ struct btrfs_superblock {
 		BTRFS_FT_XATTR = 8 		This value is used on-disk and internally but is not user-visible.
  @todo expand documentation. WinBtrfs adds `name`, which is missing from the linux kernel header; possibly a struct packing method.
  */
-typedef struct DIR_ITEM {
+struct btrfs_dir_item {
 	struct btrfs_key key;
 	uint64_t transid;
 	uint16_t extended_attribute_len;
 	uint16_t name_length;
 	uint8_t type;
-} btrfs_dir_item;
+};
 
 /*!
  @struct btrfs_timespec

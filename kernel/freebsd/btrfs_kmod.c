@@ -67,7 +67,7 @@
 #include <geom/geom_vfs.h>
 
 #include "btrfs_mount.h"
-#include "btrfs_tree.h"
+#include "btrfs.h"
 
 static const char btrfs_lock_msg[] = "btrfslk";
 
@@ -75,7 +75,29 @@ static const char *btrfs_mount_opts[] = {
         "ro", "uid", "gid", "from", NULL
 };
 
-static MALLOC_DEFINE(M_BTRFSMOUNT, "btrfs", "btrfs filesystem");
+static MALLOC_DEFINE(M_BTRFSMOUNT, "btrfs", "btrfs filesystem malloc");
+
+//@todo: we should probably check for the buffer's usability
+// brelse() is supposed to be called on a buffer to clear it for another thread to use
+static int btrfs_read_key_into_buf(struct vnode *devvp, struct btrfs_key key, struct btrfs_sys_chunks *cache_head, uint8_t *dest, struct buf *bp) {
+        int error;
+        struct b_chunk_list *chunk_entry;
+        uint64_t phys_addr;
+
+        error = 0;
+        chunk_entry = bc_find_logical_in_cache(key.offset, cache_head);
+        if(!chunk_entry) {
+                uprintf("[BTRFS] Failed to find a chunk tree cache entry for %lu\n", key.offset);
+                goto read_fail;
+        }
+
+        phys_addr = bc_logical_to_physical(chunk_entry->key, key.offset, cache_head);
+
+        error = bread(devvp, (phys_addr / 4096) * 8, chunk_entry->chunk_item.size, NOCRED, &bp);
+
+read_fail:
+        return(error);
+}
 
 // update the mount point
 static int update_mp(struct mount *mp, struct thread *td);
@@ -89,6 +111,9 @@ static vfs_root_t btrfs_root;
 static vfs_statfs_t btrfs_statfs;
 static vfs_sync_t btrfs_sync;
 static vfs_unmount_t btrfs_unmount;
+
+//@todo: red-black trees
+//RB_HEAD(btrfs_chunk_root, btrfs_root) b_chunk_root;
 
 static int update_mp(struct mount *mp, struct thread *td) {
         struct btrfsmount_internal *bmp = (struct btrfsmount_internal *)mp->mnt_data;
@@ -213,6 +238,7 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         struct cdev *dev;
 	struct vnode *devvp;
         struct btrfs_superblock *prim_sblock;
+        struct b_chunk_list *tmp_chunk_entry;
         struct bufobj *buf_obj;
 
         int ronly, error;
@@ -304,25 +330,33 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
                         error = EINVAL;
                         goto error_exit;
                 } else if(fa_chunk->num_stripes > 1) {
+                        // apparently the second stripe points to the next chunk_item
+                        // btrfs documentation is somewhat.. lacking
                         uprintf("[BTRFS] Found %d stripes, but we're only processing 1\n", fa_chunk->num_stripes);
                 }
 
-                struct b_backing_dev *n_node = malloc(sizeof(struct b_backing_dev), M_BTRFSMOUNT, M_WAITOK | M_ZERO);
-                n_node->key = *fa_key;
-                n_node->chunk_item = *fa_chunk;
-                n_node->stripe = *fa_stripe;
-
-                LIST_INSERT_HEAD(&bmp->pm_backing_dev_bootstrap, n_node, entries);
+                if(!bc_add_to_chunk_cache(*fa_key, *fa_chunk, *fa_stripe, &bmp->pm_backing_dev_bootstrap)) {
+                        uprintf("[BTRFS] Duplicate chunk item %lu not added to cache\n", fa_stripe->offset);
+                }
 
                 // we continue the traversal and skip the stripes appended at the end of each element
                 i += (sizeof(struct btrfs_chunk_item_stripe) * fa_chunk->num_stripes);
         }
 
         // in order for traversal:
+        struct btrfs_key search_key;
+        search_key.obj_type = TYPE_CHUNK_ITEM;
+        search_key.offset = bmp->pm_superblock.chunk_tree_addr;
 
-        // - Read the chunk tree root
+        tmp_chunk_entry = bc_find_logical_in_cache(bmp->pm_superblock.chunk_tree_addr, &bmp->pm_backing_dev_bootstrap);
+
+        // If we failed to bootstrap the chunk tree, we CANNOT continue
+        if(tmp_chunk_entry == NULL)
+                goto error_exit;
+
+        // - Read chunk tree root
         // - Read the root tree root (requires chunk tree for logical->physical mapping)
-        // - Read the filesystem tree root (will be found under the root tree)
+        // - Read FS root to begin traversal
 
         // assign our internal structure to mp
         bmp->pm_devvp = devvp;
@@ -345,15 +379,7 @@ error_exit:
         }
         if(bmp != NULL) {
                 lockdestroy(&bmp->pm_btrfslock);
-                if(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
-                        struct b_backing_dev *clr_np;
-                        while(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
-                                clr_np = LIST_FIRST(&bmp->pm_backing_dev_bootstrap);
-                                LIST_REMOVE(clr_np, entries);
-                                free(clr_np, M_BTRFSMOUNT);
-                                clr_np = NULL;
-                        }
-                }
+                bc_free_cache_list(&bmp->pm_backing_dev_bootstrap);
                 mp->mnt_data = NULL;
         }
         BO_LOCK(&odevvp->v_bufobj);
@@ -385,15 +411,7 @@ static int btrfs_unmount(struct mount *mp, int mntflags) {
         vrele(bmp->pm_odevvp);
         dev_rel(bmp->pm_dev);
 
-        if(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
-                        struct b_backing_dev *clr_np;
-                        while(!LIST_EMPTY(&bmp->pm_backing_dev_bootstrap)) {
-                                clr_np = LIST_FIRST(&bmp->pm_backing_dev_bootstrap);
-                                LIST_REMOVE(clr_np, entries);
-                                free(clr_np, M_BTRFSMOUNT);
-                                clr_np = NULL;
-                        }
-        }
+        bc_free_cache_list(&bmp->pm_backing_dev_bootstrap);
 
         lockdestroy(&bmp->pm_btrfslock);
         free(bmp, M_BTRFSMOUNT);

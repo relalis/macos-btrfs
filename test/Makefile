@@ -5,7 +5,7 @@ CC			= clang
 LD			= ld
 
 # Directories
-INCDIR		= ../btrfs/include
+INCDIR		= ../kernel/include
 SRCDIR		= .
 BUILDDIR	= ../build
 OBJDIR		= $(BUILDDIR)/obj
