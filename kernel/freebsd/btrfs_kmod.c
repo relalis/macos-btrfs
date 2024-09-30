@@ -47,6 +47,15 @@
  * October 1992
  */
 
+/*
+* The original code is built off the MSDOSFS implementation in FreeBSD,
+* found in sys/fs/msdosfs/msdosfs_vfsops.c. Everything beyond btrfs_mount()
+* is, for the most part, original code based on research by Yehia Hafez.
+* This software is provided "as is", and no requirement to include this comment
+* block is added, but please respect Paul Popelka's original work and include the
+* notice above this comment block.
+*/
+
 #include <sys/param.h>
 #include <sys/systm.h>
 #include <sys/buf.h>
