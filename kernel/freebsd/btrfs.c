@@ -30,6 +30,7 @@ DAMAGE.
 #include <sys/param.h>
 #include <sys/malloc.h>
 #include <sys/kernel.h>
+#include <sys/buf.h>
 #include "btrfs.h"
 
 
@@ -37,6 +38,49 @@ static MALLOC_DEFINE(M_BTRFSOPS, "btrfs_ops", "btrfs operations malloc");
 
 int btrfs_lookup_dir_item(struct btrfsmount_internal *bmp, struct btrfs_dir_item *dir_result, const char *name, int name_len) {
     return(0);
+}
+
+int bo_read_key_into_buf(struct vnode *devvp, struct btrfs_key key, struct btrfs_sys_chunks *cache_head, uint8_t *dest) {
+        // tmp_chunk_entry->key
+        struct buf *bp;
+        int error = 1, offset = 0;
+        struct b_chunk_list *chunk_entry;
+        uint64_t phys_addr;
+
+        if(dest == NULL) {
+                uprintf("[BTRFS] bad buffer passed to btrfs_read_key_into_buf()\n");
+                goto read_fail;
+        }
+        chunk_entry = bc_find_logical_in_cache(key.offset, cache_head);
+        if(!chunk_entry) {
+                uprintf("[BTRFS] Failed to find a chunk tree cache entry for %lu\n", key.offset);
+                goto read_fail;
+        }
+
+        phys_addr = bc_logical_to_physical(chunk_entry->key, key.offset, cache_head);
+
+        int bytes_remaining = chunk_entry->chunk_item.size;
+        while(bytes_remaining > 0) {
+                size_t bytes_to_read = (bytes_remaining > MAXBCACHEBUF) ? MAXBCACHEBUF : bytes_remaining;
+                daddr_t block_num = (phys_addr + offset) / DEV_BSIZE; // phys addr to blocknr
+                size_t block_offset = (phys_addr + offset) % DEV_BSIZE; // offset in blocknr
+
+                error = bread(devvp, block_num, bytes_to_read + block_offset, NOCRED, &bp);
+                if (error != 0) {
+                        brelse(bp);
+                        goto read_fail;
+                }
+
+                memcpy(dest + offset, bp->b_data + block_offset, bytes_to_read);
+                brelse(bp);
+
+                offset += bytes_to_read;
+                bytes_remaining -= bytes_to_read;
+        }
+        return(bytes_remaining); // should be zero
+
+read_fail:
+        return(error);
 }
 
 struct b_chunk_list *bc_find_key_in_cache(struct btrfs_key key, struct btrfs_sys_chunks *head) {

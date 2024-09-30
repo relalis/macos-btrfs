@@ -32,6 +32,7 @@ DAMAGE.
 
 int btrfs_lookup_dir_item(struct btrfsmount_internal *bmp, struct btrfs_dir_item *dir_result, const char *name, int name_len);
 
+int bo_read_key_into_buf(struct vnode *devvp, struct btrfs_key key, struct btrfs_sys_chunks *cache_head, uint8_t *dest);
 struct b_chunk_list *bc_find_key_in_cache(struct btrfs_key key, struct btrfs_sys_chunks *head);
 struct b_chunk_list *bc_find_logical_in_cache(uint64_t logical_addr, struct btrfs_sys_chunks *head);
 uint64_t bc_logical_to_physical(struct btrfs_key search_key, uint64_t logical_addr, struct btrfs_sys_chunks *head);

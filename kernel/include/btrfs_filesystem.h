@@ -208,7 +208,7 @@ struct btrfs_key {
  @field level
  @discussion first four must match the super block. Remaining fields allowed to be different from the super.
  */
-typedef struct {
+struct btrfs_tree_header {
 	uint8_t csum[BTRFS_CSUM_SIZE];
 	btrfs_uuid fs_uuid;
 	uint64_t address;
@@ -218,7 +218,7 @@ typedef struct {
 	uint64_t tree_id;
 	uint32_t num_items;
 	uint8_t level;
-} btrfs_tree_header;
+};
 
 /*!
  @struct leaf_node
@@ -230,11 +230,11 @@ typedef struct {
 
  Size field of struct btrfs_item indicates how much data is stored.
  */
-typedef struct {
+struct btrfs_leaf_node {
 	struct btrfs_key key;
 	uint32_t offset;
 	uint32_t size;
-} btrfs_leaf_node;
+};
 
 /*!
  @struct internal_node
@@ -245,11 +245,11 @@ typedef struct {
  @field generation
  @discussion all non-leaf blocks are nodes, they hold only keys and pointers to other blocks
  */
-typedef struct {
+struct btrfs_internal_node {
 	struct btrfs_key key;
 	uint64_t address;
 	uint64_t generation;
-} btrfs_internal_node;
+};
 
 /*!
  @struct btrfs_dev_item

@@ -93,28 +93,6 @@ static const char *btrfs_mount_opts[] = {
 
 static MALLOC_DEFINE(M_BTRFSMOUNT, "btrfs", "btrfs filesystem malloc");
 
-//@todo: we should probably check for the buffer's usability
-// brelse() is supposed to be called on a buffer to clear it for another thread to use
-static int btrfs_read_key_into_buf(struct vnode *devvp, struct btrfs_key key, struct btrfs_sys_chunks *cache_head, uint8_t *dest, struct buf *bp) {
-        int error;
-        struct b_chunk_list *chunk_entry;
-        uint64_t phys_addr;
-
-        error = 0;
-        chunk_entry = bc_find_logical_in_cache(key.offset, cache_head);
-        if(!chunk_entry) {
-                uprintf("[BTRFS] Failed to find a chunk tree cache entry for %lu\n", key.offset);
-                goto read_fail;
-        }
-
-        phys_addr = bc_logical_to_physical(chunk_entry->key, key.offset, cache_head);
-
-        error = bread(devvp, (phys_addr / 4096) * 8, chunk_entry->chunk_item.size, NOCRED, &bp);
-
-read_fail:
-        return(error);
-}
-
 // update the mount point
 static int update_mp(struct mount *mp, struct thread *td);
 static int mount_btrfs_filesystem(struct vnode *devvp, struct mount *mp);
@@ -328,6 +306,8 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
 
         // store superblock in the in-memory structure
         bmp->pm_superblock = *prim_sblock;
+        
+        brelse(bp);
 
         LIST_INIT(&bmp->pm_backing_dev_bootstrap);
 
@@ -368,7 +348,21 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         // - Read chunk tree root
         // - Read the root tree root (requires chunk tree for logical->physical mapping)
         // - Read FS root to begin traversal
+        uint8_t *temp_buf = malloc(tmp_chunk_entry->chunk_item.size, M_BTRFSMOUNT, M_WAITOK | M_ZERO);
 
+        error = bo_read_key_into_buf(devvp, tmp_chunk_entry->key, &bmp->pm_backing_dev_bootstrap, temp_buf);
+        if(error)
+                goto error_exit;
+
+/*
+        struct btrfs_tree_header *head = (struct btrfs_tree_header *)temp_buf;
+        uprintf("addr %lu num items %u level %d\n", head->address, head->num_items, head->level);
+        uint8_t *tst = (temp_buf + sizeof(struct btrfs_tree_header));
+        for(int i = 0; i < head->num_items; ++i) {
+                struct btrfs_leaf_node *to_dump_item = (struct btrfs_leaf_node *) (tst + (i * (sizeof(struct btrfs_leaf_node))));
+        	uprintf("\n[ key = {obj_id=%lu obj_type=0x%X off=%lu} ]\n", to_dump_item->key.obj_id, to_dump_item->key.obj_type, to_dump_item->key.offset);
+        }
+*/
         // assign our internal structure to mp
         bmp->pm_devvp = devvp;
         bmp->pm_odevvp = odevvp;
@@ -376,8 +370,7 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
 
         mp->mnt_data = bmp;
 
-        brelse(bp);
-        bp = NULL;
+        free(temp_buf, M_BTRFSMOUNT);
         return(0);
 
 error_exit:
