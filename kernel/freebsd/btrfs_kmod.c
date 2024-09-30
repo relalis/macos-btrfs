@@ -69,6 +69,13 @@
 #include "btrfs_mount.h"
 #include "btrfs.h"
 
+#ifdef LINUX_CROSS_BUILD
+// clang on debian breaks fstack-protector as of 14.0.6
+// this issue seems to be upstream at llvm, not debian
+// for now, we're working around it
+void *__stack_chk_guard = (void *)0xdeadbeef;
+#endif
+
 static const char btrfs_lock_msg[] = "btrfslk";
 
 static const char *btrfs_mount_opts[] = {
@@ -343,11 +350,6 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
                 i += (sizeof(struct btrfs_chunk_item_stripe) * fa_chunk->num_stripes);
         }
 
-        // in order for traversal:
-        struct btrfs_key search_key;
-        search_key.obj_type = TYPE_CHUNK_ITEM;
-        search_key.offset = bmp->pm_superblock.chunk_tree_addr;
-
         tmp_chunk_entry = bc_find_logical_in_cache(bmp->pm_superblock.chunk_tree_addr, &bmp->pm_backing_dev_bootstrap);
 
         // If we failed to bootstrap the chunk tree, we CANNOT continue
@@ -420,8 +422,12 @@ static int btrfs_unmount(struct mount *mp, int mntflags) {
 }
 
 static int btrfs_root(struct mount *mp, int flags, struct vnode **vpp) {
-        struct btrfsmount_internal *bmp = VFSTOBTRFS(mp);
-        return(bmp->pm_superblock.leaf_size);
+//        struct btrfsmount_internal *bmp = VFSTOBTRFS(mp);
+//        return(bmp->pm_superblock.leaf_size);
+
+        // After mount is called, this function is called. We're returning an error to kill the process
+        // for testing purposes
+        return(ENXIO);
 }
 
 static int btrfs_statfs(struct mount *mp, struct statfs *sbp) {
