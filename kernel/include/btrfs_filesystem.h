@@ -1,6 +1,7 @@
-// btrfs_filesystem.h
+#ifndef _BTRFS_FILESYSTEM_H
+#define _BTRFS_FILESYSTEM_H
 
-/* btrfs_filesystem.h
+/*
  * Copied from WinBtrfs, all credits to maharmstone (https://github.com/maharmstone/btrfs)
  *
  * Generic btrfs header file. Thanks to whoever it was who wrote
@@ -8,12 +9,35 @@
  *
  * I release this file, and this file only, into the public domain - do whatever
  * you want with it. You don't have to, but I'd appreciate if you let me know if you
- * use it anything cool - mark@harmstone.com. */
+ * use it anything cool - mark@harmstone.com.
+ */
 
 #pragma once
 
-#include <stdint.h>
+#include <sys/types.h>
+#ifdef __APPLE__
 #include <libkern/libkern.h>
+#elif __FreeBSD__
+#include <sys/libkern.h>
+#endif
+
+#ifdef __linux__
+#include <stdint.h>
+#endif
+
+#ifndef __APPLE__
+#define FSUR_RECOGNIZED         (-1)
+#define FSUR_UNRECOGNIZED       (-2)
+#define FSUR_IO_SUCCESS         (-3)
+#define FSUR_IO_FAIL            (-4)
+#define FSUR_IO_UNCLEAN         (-5)
+#else
+#include <sys/loadable_fs.h>
+#endif
+
+#ifndef errno_t
+#define errno_t int
+#endif
 
 #define DMESG_LOG(fmt, ...) printf("[macos-BTRFS]: " fmt "\n", ##__VA_ARGS__);
 
@@ -159,11 +183,11 @@ typedef struct BTRFS_UUID {
 	uint8_t uuid[16];
 } btrfs_uuid;
 
-typedef struct KEY {
+struct btrfs_key {
 	uint64_t obj_id;
 	uint8_t obj_type;
 	uint64_t offset;
-} btrfs_key;
+};
 
 #define HEADER_FLAG_WRITTEN         0x000000000000001
 #define HEADER_FLAG_SHARED_BACKREF  0x000000000000002
@@ -184,7 +208,7 @@ typedef struct KEY {
  @field level
  @discussion first four must match the super block. Remaining fields allowed to be different from the super.
  */
-typedef struct {
+struct btrfs_tree_header {
 	uint8_t csum[BTRFS_CSUM_SIZE];
 	btrfs_uuid fs_uuid;
 	uint64_t address;
@@ -194,7 +218,7 @@ typedef struct {
 	uint64_t tree_id;
 	uint32_t num_items;
 	uint8_t level;
-} btrfs_tree_header;
+};
 
 /*!
  @struct leaf_node
@@ -206,11 +230,11 @@ typedef struct {
 
  Size field of struct btrfs_item indicates how much data is stored.
  */
-typedef struct {
-	btrfs_key key;
+struct btrfs_leaf_node {
+	struct btrfs_key key;
 	uint32_t offset;
 	uint32_t size;
-} btrfs_leaf_node;
+};
 
 /*!
  @struct internal_node
@@ -221,11 +245,11 @@ typedef struct {
  @field generation
  @discussion all non-leaf blocks are nodes, they hold only keys and pointers to other blocks
  */
-typedef struct {
-	btrfs_key key;
+struct btrfs_internal_node {
+	struct btrfs_key key;
 	uint64_t address;
 	uint64_t generation;
-} btrfs_internal_node;
+};
 
 /*!
  @struct btrfs_dev_item
@@ -247,7 +271,7 @@ typedef struct {
  @field fs_uuid uuid of FS that owns this device
  @discussion `dev_id` matches the dev_id in the filesystem's list of struct btrfs_devices.
  */
-typedef struct DEV_ITEM {
+struct btrfs_dev_item {
 	uint64_t dev_id;
 	uint64_t num_bytes;
 	uint64_t bytes_used;
@@ -262,13 +286,13 @@ typedef struct DEV_ITEM {
 	uint8_t bandwidth;
 	btrfs_uuid device_uuid;
 	btrfs_uuid fs_uuid;
-} btrfs_dev_item;
+};
 
 #define SYS_CHUNK_ARRAY_SIZE 0x800
 #define BTRFS_NUM_BACKUP_ROOTS 4
 
 /*!
- @struct superblock_backup
+ @struct btrfs_superblock_backup
  @abstract Used to hold a backup of a superblock
  @field root_tree_addr
  @field root_tree_generation
@@ -295,7 +319,7 @@ typedef struct DEV_ITEM {
  @field reserved2 Reserved for future expansion, and as an alignment
  @todo complete documentation
  */
-typedef struct {
+struct btrfs_superblock_backup {
 	uint64_t root_tree_addr;
 	uint64_t root_tree_generation;
 	uint64_t chunk_tree_addr;
@@ -319,10 +343,10 @@ typedef struct {
 	uint8_t dev_root_level;
 	uint8_t csum_root_level;
 	uint8_t reserved2[10];
-} superblock_backup;
+};
 
 /*!
- @struct superblock
+ @struct btrfs_superblock
  @abstract lists the main trees of the FS
  @field checksum Checksum of everything past this field (from 20 to 1000)
  @field uuid FS specific UUID, visible to user
@@ -334,21 +358,21 @@ typedef struct {
  @field chunk_tree_addr logical address of the chunk tree root
  @field log_tree_addr  logical address of the log tree root
  @field log_root_transid  will help find the new super based on the log root
- @field total_bytes
- @field bytes_used
- @field root_dir_objectid
+ @field total_bytes size of the filesystem in bytes
+ @field bytes_used used space in filesystem
+ @field root_dir_objectid the object id of the root directory, to be matched with btrfs_key objectid
  @field num_devices
- @field sector_size
- @field node_size
- @field leaf_size
- @field stripe_size
+ @field sector_size size of each sector
+ @field node_size 
+ @field leaf_size deprecated
+ @field stripe_size size of stripes
  @field sys_chunk_array_size
  @field chunk_root_generation
  @field compat_flags
  @field compat_ro_flags only implementations that support the flags can write to the filesystem
  @field incompat_flags only implementations that support the flags can use the filesystem
  @field csum_type Btrfs currently uses the CRC32c little-endian hash function with seed -1
- @field root_level
+ @field root_level 
  @field chunk_root_level
  @field log_root_level
  @field dev_item DEV_ITEM data for this device
@@ -360,11 +384,11 @@ typedef struct {
  @field sys_chunk_array Contains (KEY, CHUNK_ITEM) pairs for all SYSTEM chunks. This is needed to bootstrap the mapping from logical addresses to physical.
  @field backup Contain super_roots (4 btrfs_root_backup)
  @field reserved2 Reserved for future expansion
- @discussion The primary superblock is located at 0x1 0000 (6410 KiB). Mirror copies of the superblock are located at physical addresses 0x400 0000 (6410 MiB), 0x40 0000 0000 (25610 GiB), and 0x4 0000 0000 0000 (1 PiB), if these locations are valid. btrfs normally updates all superblocks, but in SSD mode it will update only one at a time. The superblock with the highest generation is used when reading.
- @note Btrfs only recognizes disks with a valid 0x1 0000 superblock; otherwise, there would be confusion with other filesystems.
+ @discussion The primary superblock is located at 0x1â€¯0000 (6410â€¯KiB). Mirror copies of the superblock are located at physical addresses 0x400â€¯0000 (6410â€¯MiB), 0x40â€¯0000â€¯0000 (25610â€¯GiB), and 0x4â€¯0000â€¯0000â€¯0000 (1â€¯PiB), if these locations are valid. btrfs normally updates all superblocks, but in SSD mode it will update only one at a time. The superblock with the highest generation is used when reading.
+ @note Btrfs only recognizes disks with a valid 0x1â€¯0000 superblock; otherwise, there would be confusion with other filesystems.
  @todo expand documentation.
  */
-typedef struct {
+struct btrfs_superblock {
 	uint8_t checksum[BTRFS_CSUM_SIZE];
 	btrfs_uuid uuid;
 	uint64_t sb_phys_addr;
@@ -392,16 +416,16 @@ typedef struct {
 	uint8_t root_level;
 	uint8_t chunk_root_level;
 	uint8_t log_root_level;
-	btrfs_dev_item dev_item;
+	struct btrfs_dev_item dev_item;
 	char label[MAX_LABEL_SIZE];
 	uint64_t cache_generation;
 	uint64_t uuid_tree_generation;
 	btrfs_uuid metadata_uuid;
 	uint64_t reserved[28];
 	uint8_t sys_chunk_array[SYS_CHUNK_ARRAY_SIZE];
-	superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
+	struct btrfs_superblock_backup backup[BTRFS_NUM_BACKUP_ROOTS];
 //	uint8_t reserved2[565];
-} __attribute__((__packed__, __aligned__(8))) superblock;
+} __attribute__((__packed__, __aligned__(8)));
 
 /*!
  @struct DIR_ITEM
@@ -425,13 +449,13 @@ typedef struct {
 		BTRFS_FT_XATTR = 8 		This value is used on-disk and internally but is not user-visible.
  @todo expand documentation. WinBtrfs adds `name`, which is missing from the linux kernel header; possibly a struct packing method.
  */
-typedef struct DIR_ITEM {
-	btrfs_key key;
+struct btrfs_dir_item {
+	struct btrfs_key key;
 	uint64_t transid;
 	uint16_t extended_attribute_len;
 	uint16_t name_length;
 	uint8_t type;
-} btrfs_dir_item;
+};
 
 /*!
  @struct btrfs_timespec
@@ -514,7 +538,7 @@ typedef struct INODE_ITEM {
  @field reserved For future expansion
  @discussion This structure holds defines the the root of a btree. It is associated with the ROOT_ITEM type. This structure is never used outside of this item.
  */
-typedef struct ROOT_ITEM {
+struct btrfs_root_item {
 	btrfs_inode_item inode;
 	uint64_t generation;
 	uint64_t objid;
@@ -524,7 +548,7 @@ typedef struct ROOT_ITEM {
 	uint64_t last_snapshot_generation;
 	uint64_t flags;
 	uint32_t num_references;
-	btrfs_key drop_progress;
+	struct btrfs_key drop_progress;
 	uint8_t drop_level;
 	uint8_t root_level;
 	uint64_t generation2;
@@ -540,7 +564,7 @@ typedef struct ROOT_ITEM {
 	btrfs_timespec stime;
 	btrfs_timespec rtime;
 	uint64_t reserved[8];
-} btrfs_root_item;
+};
 
 /*!
  @struct CHUNK_ITEM
@@ -561,7 +585,7 @@ typedef struct ROOT_ITEM {
 
 /// @todo Linux kernel header adds a `struct stripe` at the end of this structure, to store additional stripes in the item chunk.
 
-typedef struct CHUNK_ITEM {
+struct btrfs_chunk_item {
 	uint64_t size;
 	uint64_t root_id;
 	uint64_t stripe_length;
@@ -571,7 +595,7 @@ typedef struct CHUNK_ITEM {
 	uint32_t sector_size;
 	uint16_t num_stripes;
 	uint16_t sub_stripes;
-} btrfs_chunk_item;
+};
 
 /*!
  @struct btrfs_chunk_item_stripe
@@ -580,11 +604,11 @@ typedef struct CHUNK_ITEM {
  @field offset Location of the start of the stripe, in bytes. Size is determined by the stripe_len field in struct btrfs_chunk.
  @field dev_uuid UUID of the device that contains this stripe. Used to confirm that the correct device has been retrieved.
  */
-typedef struct CHUNK_ITEM_STRIPE {
+struct btrfs_chunk_item_stripe {
 	uint64_t dev_id;
 	uint64_t offset;
 	btrfs_uuid dev_uuid;
-} btrfs_chunk_item_stripe;
+};
 
 /*!
  @struct EXTENT_DATA
@@ -663,7 +687,7 @@ typedef struct {
  @field level
  */
 typedef struct {
-	btrfs_key firstitem;
+	struct btrfs_key firstitem;
 	uint8_t level;
 } EXTENT_ITEM2;
 
@@ -677,7 +701,7 @@ typedef struct {
 
 typedef struct {
 	EXTENT_ITEM extent_item;
-	btrfs_key firstitem;
+	struct btrfs_key firstitem;
 	uint8_t level;
 } EXTENT_ITEM_TREE;
 
@@ -775,7 +799,7 @@ typedef struct {
  @field num_bitmaps
  */
 typedef struct {
-	btrfs_key key;
+	struct btrfs_key key;
 	uint64_t generation;
 	uint64_t num_entries;
 	uint64_t num_bitmaps;
@@ -977,11 +1001,6 @@ typedef struct {
 	uint16_t length;
 } btrfs_send_tlv;
 
-/// this is wrong, it needs to use castagnoli crc32 (crc32c), not the standard crc32
-static inline uint64_t btrfs_name_hash(const char *name, int len) {
-	return crc32((uint32_t)~1, name, len);
-}
-
 #define kassert(ex)             (void) ((void) (ex))
 #define kassertf(ex, fmt, ...)  (void) ((void) (ex), ##__VA_ARGS__)
 #define kassert_null(ptr)       kassert(((void *) ptr) == NULL)
@@ -989,3 +1008,5 @@ static inline uint64_t btrfs_name_hash(const char *name, int len) {
 
 
 #pragma pack(pop)
+
+#endif //_BTRFS_FILESYSTEM_H

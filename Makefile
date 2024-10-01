@@ -1,31 +1,14 @@
-#
-# All-in-one Makefile
-#
+## This makefile is explicitly for GNU Make, and to cross-compile for FreeBSD
+## You MUST define MAKESYSPATH below, or you can't build for BSD.
 
-MAKE=make
-MV=mv
-RM=rm
-MKDIR=mkdir
-OUT=bin
+.PHONY: all clean bsd
 
-all: debug
+export MAKESYSPATH=/home/yehia/extra_storage/freebsd_src/usr/src/share/mk
 
-debug:
-	$(RM) -rf $(OUT)/macos_btrfs.kext* $(OUT)/mount_btrfs*
-	$(MAKE) -C btrfs_filesystem $(TARGET)
-	$(MAKE) -C mount $(TARGET)
-	$(MKDIR) -p $(OUT)
-	$(MV) btrfs_filesystem/macos_btrfs.kext btrfs_filesystem/macos_btrfs.kext.dSYM $(OUT)
-	$(MV) mount/mount_btrfs $(OUT)
-	$(MV) mount/mount_btrfs.dSYM $(OUT) 2> /dev/null || true
-
-release: TARGET=release
-release: debug
+all:
+	if [ -d "$(MAKESYSPATH)" ]; then bmake -C kernel/freebsd; fi
+	$(MAKE) -C test
 
 clean:
-	$(RM) -rf $(OUT)/macos_btrfs.kext* $(OUT)/mount_btrfs*
-	$(MAKE) -C btrfs_filesystem clean
-	$(MAKE) -C mount clean
-
-.PHONY: all debug release clean
-
+	if [ -d "$(MAKESYSPATH)" ]; then bmake -C kernel/freebsd clean; fi
+	$(MAKE) -C test clean
