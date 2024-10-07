@@ -536,7 +536,7 @@ typedef struct INODE_ITEM {
  @field stime Timestamp for stransid.
  @field rtime Timestamp for rtransid.
  @field reserved For future expansion
- @discussion This structure holds defines the the root of a btree. It is associated with the ROOT_ITEM type. This structure is never used outside of this item.
+ @discussion This structure holds defines the root of a btree. It is associated with the ROOT_ITEM type. This structure is never used outside of this item.
  */
 struct btrfs_root_item {
 	btrfs_inode_item inode;

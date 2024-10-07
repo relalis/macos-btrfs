@@ -24,21 +24,24 @@ OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
 
-#ifndef _BTRFS_H
-#define _BTRFS_H
+#include <sys/systm.h>
+#include <sys/mount.h>
+#include <sys/param.h>
+#include <sys/malloc.h>
+#include <sys/buf.h>
+#include "btrfs_tree.h"
 
-#include "btrfs_mount.h"
+int bt_search_by_key(struct btrfs_key in, struct vnode *devvp, struct btrfs_sys_chunks *cache_head, uint8_t *tree_root, void *dest) {
+  struct btrfs_tree_header t_header = BTRFSHEADER(tree_root);
+  if(t_header.level == 1) {
+    uprintf("node\n");
+  } else {
+    uprintf("leaf\n");
+  }
+  return(0);
+}
 
-int btrfs_lookup_dir_item(struct btrfsmount_internal *bmp, struct btrfs_dir_item *dir_result, const char *name, int name_len);
-
-// bo_ - Block operations
-// bc_ - BTRFS Cache
-
-int bo_read_key_into_buf(struct vnode *devvp, struct btrfs_key key, struct btrfs_sys_chunks *cache_head, uint8_t *dest);
-struct b_chunk_list *bc_find_key_in_cache(struct btrfs_key key, struct btrfs_sys_chunks *head);
-struct b_chunk_list *bc_find_logical_in_cache(uint64_t logical_addr, struct btrfs_sys_chunks *head);
-uint64_t bc_logical_to_physical(struct btrfs_key search_key, uint64_t logical_addr, struct btrfs_sys_chunks *head);
-int bc_add_to_chunk_cache(struct btrfs_key key, struct btrfs_chunk_item item, struct btrfs_chunk_item_stripe stripe, struct btrfs_sys_chunks *head);
-void bc_free_cache_list(struct btrfs_sys_chunks *head);
-
-#endif
+int bt_walk_leaves(struct btrfs_sys_chunks *head) {
+  
+  return(0);
+}

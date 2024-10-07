@@ -77,6 +77,7 @@
 
 #include "btrfs_mount.h"
 #include "btrfs.h"
+#include "btrfs_tree.h"
 
 #ifdef LINUX_CROSS_BUILD
 // clang on debian breaks fstack-protector as of 14.0.6
@@ -306,7 +307,12 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
 
         // store superblock in the in-memory structure
         bmp->pm_superblock = *prim_sblock;
-        
+
+        bmp->pm_fsinfo.chunk_root = NULL;
+        bmp->pm_fsinfo.tree_root = NULL;
+        bmp->pm_fsinfo.fs_root = NULL;
+        bmp->pm_fsinfo.extent_root = NULL;
+
         brelse(bp);
 
         LIST_INIT(&bmp->pm_backing_dev_bootstrap);
@@ -345,24 +351,52 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
         if(tmp_chunk_entry == NULL)
                 goto error_exit;
 
-        // - Read chunk tree root
         // - Read the root tree root (requires chunk tree for logical->physical mapping)
         // - Read FS root to begin traversal
-        uint8_t *temp_buf = malloc(tmp_chunk_entry->chunk_item.size, M_BTRFSMOUNT, M_WAITOK | M_ZERO);
+        bmp->pm_fsinfo.chunk_root = malloc(tmp_chunk_entry->chunk_item.size, M_BTRFSMOUNT, M_WAITOK | M_ZERO);
 
-        error = bo_read_key_into_buf(devvp, tmp_chunk_entry->key, &bmp->pm_backing_dev_bootstrap, temp_buf);
+        error = bo_read_key_into_buf(devvp, tmp_chunk_entry->key, &bmp->pm_backing_dev_bootstrap, bmp->pm_fsinfo.chunk_root);
         if(error)
                 goto error_exit;
 
-/*
-        struct btrfs_tree_header *head = (struct btrfs_tree_header *)temp_buf;
-        uprintf("addr %lu num items %u level %d\n", head->address, head->num_items, head->level);
-        uint8_t *tst = (temp_buf + sizeof(struct btrfs_tree_header));
-        for(int i = 0; i < head->num_items; ++i) {
+        struct btrfs_tree_header head = BTRFSHEADER(bmp->pm_fsinfo.chunk_root);
+        uint8_t *tst = BTRFSDATABUF(bmp->pm_fsinfo.chunk_root);
+        for(int i = 0; i < head.num_items; ++i) {
                 struct btrfs_leaf_node *to_dump_item = (struct btrfs_leaf_node *) (tst + (i * (sizeof(struct btrfs_leaf_node))));
-        	uprintf("\n[ key = {obj_id=%lu obj_type=0x%X off=%lu} ]\n", to_dump_item->key.obj_id, to_dump_item->key.obj_type, to_dump_item->key.offset);
+                switch(to_dump_item->key.obj_type) {
+                        case TYPE_CHUNK_ITEM: {
+                                struct btrfs_chunk_item *tmp_chnk = (struct btrfs_chunk_item *)(tst + to_dump_item->offset);
+                                for(int j = 0; j < tmp_chnk->num_stripes; ++j) {
+                                        // We're skipping all chunks past the first.
+                                        // Stripes after the first are for RAID setups, which we don't support
+                                        if(j > 0)
+                                                continue;
+                                        struct btrfs_chunk_item_stripe *tmp_stripe = (struct btrfs_chunk_item_stripe *)(tst + to_dump_item->offset + sizeof(struct btrfs_chunk_item));
+                                        if(!bc_add_to_chunk_cache(to_dump_item->key, *tmp_chnk, *tmp_stripe, &bmp->pm_backing_dev_bootstrap)) {
+                                                uprintf("Overlap in chunk cache %lu %X\n", to_dump_item->key.obj_id, to_dump_item->key.obj_type);
+                                        }
+                                }
+                                break;
+                        }
+                        default:
+                                break;
+                }
         }
-*/
+
+        tmp_chunk_entry = bc_find_logical_in_cache(bmp->pm_superblock.root_tree_addr, &bmp->pm_backing_dev_bootstrap);
+        // if we cannot read the root tree, we cannot continue
+        if(tmp_chunk_entry == NULL)
+                goto error_exit;
+
+        bmp->pm_fsinfo.tree_root = malloc(tmp_chunk_entry->chunk_item.size, M_BTRFSMOUNT, M_WAITOK | M_ZERO);
+
+        error = bo_read_key_into_buf(devvp, tmp_chunk_entry->key, &bmp->pm_backing_dev_bootstrap, bmp->pm_fsinfo.tree_root);
+        if(error)
+                goto error_exit;
+
+        head = BTRFSHEADER(bmp->pm_fsinfo.tree_root);
+        uprintf("TREE ROOT addr %lu num items %u level %d\n", head.address, head.num_items, head.level);
+
         // assign our internal structure to mp
         bmp->pm_devvp = devvp;
         bmp->pm_odevvp = odevvp;
@@ -370,7 +404,6 @@ static int mount_btrfs_filesystem(struct vnode *odevvp, struct mount *mp) {
 
         mp->mnt_data = bmp;
 
-        free(temp_buf, M_BTRFSMOUNT);
         return(0);
 
 error_exit:
@@ -397,6 +430,7 @@ error_exit:
 }
 
 static int btrfs_unmount(struct mount *mp, int mntflags) {
+        uprintf("[BTRFS] Unmount called\n");
         int error;
         struct btrfsmount_internal *bmp;
 
@@ -416,6 +450,10 @@ static int btrfs_unmount(struct mount *mp, int mntflags) {
         dev_rel(bmp->pm_dev);
 
         bc_free_cache_list(&bmp->pm_backing_dev_bootstrap);
+        if(bmp->pm_fsinfo.chunk_root != NULL)
+                free(bmp->pm_fsinfo.chunk_root, M_BTRFSMOUNT);
+        if(bmp->pm_fsinfo.tree_root != NULL)
+                free(bmp->pm_fsinfo.tree_root, M_BTRFSMOUNT);
 
         lockdestroy(&bmp->pm_btrfslock);
         free(bmp, M_BTRFSMOUNT);
@@ -426,6 +464,7 @@ static int btrfs_unmount(struct mount *mp, int mntflags) {
 static int btrfs_root(struct mount *mp, int flags, struct vnode **vpp) {
 //        struct btrfsmount_internal *bmp = VFSTOBTRFS(mp);
 //        return(bmp->pm_superblock.leaf_size);
+        uprintf("[BTRFS] btrfs_root called\n");
 
         // After mount is called, this function is called. We're returning an error to kill the process
         // for testing purposes
