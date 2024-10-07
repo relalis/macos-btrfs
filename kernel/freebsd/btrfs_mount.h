@@ -48,16 +48,16 @@ struct b_chunk_list {
 // Linux kernel has a helpful struct (btrfs/fs.h) that holds pointers to all the roots
 // we will encounter. Seems like a good idea to me.
 struct btrfs_fs_info {
-    struct btrfs_root *tree_root;
-    struct btrfs_root *chunk_root;
-    struct btrfs_root *fs_root;
-    struct btrfs_root *extent_root;
+    uint8_t *tree_root;
+    uint8_t *chunk_root;
+    uint8_t *fs_root;
+    uint8_t *extent_root;
 };
 
 // RB root item
 //@todo: implement btrfs_root struct methods to hold RB roots
 struct btrfs_root {
-    RB_ENTRY(btrfs_root) rb_node;
+//    RB_ENTRY(btrfs_root) rb_node;
 
     struct btrfs_root_item root_item;
     struct btrfs_key root_key;
